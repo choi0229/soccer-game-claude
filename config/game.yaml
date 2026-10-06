@@ -68,8 +68,8 @@ archetype:
   primaryGrowthMultiplier: 1.2
 
 training:
-  team: { baseGrowth: 0.15, stamina: -8 }
-  personal: { baseGrowth: 0.10, stamina: -6 }
+  team: { baseGrowth: 0.09, stamina: -8 }
+  personal: { baseGrowth: 0.06, stamina: -6 }
   # 능력치가 below 미만이면 factor 적용 (위에서부터 처음 맞는 구간)
   decay:
     - { below: 60, factor: 1.0 }
@@ -81,16 +81,16 @@ daily:
   defaultDawn: SLEEP
   defaultClassAttitude: FOCUS
   dawn:
-    exercise: { fitness: 0.1, stamina: -6 }
+    exercise: { fitness: 0.04, stamina: -6 }
     sleep: { stamina: 8 }
   classAttitudes:
     FOCUS: { name: 수업 집중, academics: 1.5, scaleAcademicsBySchoolLife: true, stamina: -2, schoolAffinity: 0, schoolEventChance: 0 }
     DOZE: { name: 졸기, academics: -0.5, scaleAcademicsBySchoolLife: false, stamina: 8, schoolAffinity: 0, schoolEventChance: 0 }
-    TEACHER: { name: 선생님과 대화, academics: 0.5, scaleAcademicsBySchoolLife: false, stamina: 0, schoolAffinity: 3, schoolEventChance: 0.3 }
-    FRIENDS: { name: 친구와 어울리기, academics: 0, scaleAcademicsBySchoolLife: false, stamina: 0, schoolAffinity: 3, schoolEventChance: 0.3 }
+    TEACHER: { name: 선생님과 대화, academics: 0.5, scaleAcademicsBySchoolLife: false, stamina: 0, schoolAffinity: 3, schoolEventChance: 0.15 }
+    FRIENDS: { name: 친구와 어울리기, academics: 0, scaleAcademicsBySchoolLife: false, stamina: 0, schoolAffinity: 3, schoolEventChance: 0.15 }
   # 학교생활 배율 = base + 학교생활 관계도 / divisor
   schoolLifeMultiplier: { base: 1.0, divisor: 200 }
-  nightRecovery: 14
+  nightRecovery: 8
   sundayExtraRecovery: 20
   sunday:
     rest: { stamina: 25, condition: 1 }
@@ -123,6 +123,8 @@ academics:
   min: 0
   max: 100
   remedialGain: 1
+  # 학기 중인 주가 끝날 때마다(일요일 처리 끝) 더하는 값. 방학 주에는 적용하지 않는다.
+  semesterWeeklyChange: -2
   checks:
     - { at: { month: 7, week: 3 }, below: 30, remedialWeeks: [ { month: 9, week: 1 }, { month: 9, week: 2 } ] }
     # 다음 학기(2학년 3월)는 1년 범위 밖이므로 점검 결과만 기록한다
@@ -140,8 +142,10 @@ resources:
 match:
   minutes: 80
   selection:
-    coachWeight: 0.5
-    statWeight: 0.5
+    # 출전 점수 = 감독 관계도 × coachWeight + 훈련 능력치 상위 topStatCount 개 평균 × statWeight
+    coachWeight: 0.3
+    statWeight: 0.7
+    topStatCount: 6
     starterMargin: -5
     subMargin: -20
   teamGoals: { base: 1.2, perStrength: 0.03, min: 0.2, max: 3.5 }

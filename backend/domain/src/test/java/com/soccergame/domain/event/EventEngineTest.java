@@ -183,7 +183,7 @@ class EventEngineTest {
     }
 
     @Test
-    void classTeacherOrFriendsTriggersSchoolEventAboutThirtyPercent() {
+    void classTeacherOrFriendsTriggersSchoolEventAboutFifteenPercent() {
         int fired = 0;
         int n = 2000;
         for (long seed = 0; seed < n; seed++) {
@@ -195,7 +195,7 @@ class EventEngineTest {
                 assertThat(s.pendingEvents.peekFirst().source()).isEqualTo("CLASS");
             }
         }
-        assertThat((double) fired / n).isBetween(0.26, 0.34);
+        assertThat((double) fired / n).isBetween(0.12, 0.18);
         // 집중·졸기는 수업 이벤트가 없다
         GameState s = semester(1);
         for (int i = 0; i < 5; i++) {

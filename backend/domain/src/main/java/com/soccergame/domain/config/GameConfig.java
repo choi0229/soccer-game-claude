@@ -67,6 +67,13 @@ public final class GameConfig {
         }
     }
 
+    /** 플레이어 학교 유형만 바꾼 설정 (시뮬레이터용) */
+    public GameConfig withPlayerSchoolType(String schoolType) {
+        Schools s = new Schools(schools.regions(), schools.types(), schools.defenderTypes(),
+                new Schools.PlayerSchool(schoolType, schools.player().region()), schools.nameParts());
+        return new GameConfig(rules, trainingMenus, scenes, s, events);
+    }
+
     private void validate() {
         for (String key : List.of(FITNESS, MOMENTUM, CLUTCH, MENTAL)) {
             requireStat(key, "엔진 필수 패시브");
@@ -77,6 +84,10 @@ public final class GameConfig {
                 throw new ConfigException("훈련 메뉴에 능력치가 없습니다: " + menu.id());
             }
             menu.stats().forEach(k -> requireStat(k, "훈련 메뉴 " + menu.id()));
+        }
+        int topN = rules.match().selection().topStatCount();
+        if (topN < 1 || topN > trainedKeys.size()) {
+            throw new ConfigException("출전 점수 상위 능력치 개수가 범위를 벗어났습니다: " + topN);
         }
         for (TrainingSlot slot : TrainingSlot.values()) {
             String id = trainingMenus.defaults().get(slot);

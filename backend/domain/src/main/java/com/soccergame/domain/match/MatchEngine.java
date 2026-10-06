@@ -27,10 +27,18 @@ public final class MatchEngine {
         this.rules = config.rules().match();
     }
 
-    /** 출전 점수 = 감독 관계도 × w1 + 훈련 능력치 평균 × w2 */
+    /** 출전 점수 = 감독 관계도 × w1 + 훈련 능력치 중 상위 N개의 평균 × w2 */
     public double selectionScore(double coachAffinity, Stats stats) {
         Rules.Selection sel = rules.selection();
-        return coachAffinity * sel.coachWeight() + stats.average(config.trainedStatKeys()) * sel.statWeight();
+        double topAverage = config.trainedStatKeys().stream()
+                .mapToDouble(stats::get)
+                .boxed()
+                .sorted(Comparator.reverseOrder())
+                .limit(sel.topStatCount())
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0);
+        return coachAffinity * sel.coachWeight() + topAverage * sel.statWeight();
     }
 
     public MatchRole role(double selectionScore, double teamStrength, boolean injured) {

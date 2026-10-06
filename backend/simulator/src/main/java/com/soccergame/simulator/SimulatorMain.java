@@ -54,6 +54,29 @@ public final class SimulatorMain {
             reports.add(report);
         }
         System.err.printf("%d판 × %d전략 완료 (%.1f초)%n", runs, reports.size(), (System.nanoTime() - started) / 1e9);
-        return new ReportPrinter(config).render(reports, runs, seedStart);
+        String main = new ReportPrinter(config).render(reports, runs, seedStart);
+        return main + bySchoolType(config, runs, seedStart);
+    }
+
+    /** 학교 유형 5종 × (훈련 위주, 균형) */
+    static String bySchoolType(GameConfig config, int runs, long seedStart) {
+        long started = System.nanoTime();
+        List<Strategy> strategies = List.of(new Strategies.TrainingFocus(), new Strategies.Balanced());
+        List<ReportPrinter.SchoolTypeRow> rows = new ArrayList<>();
+        for (var type : config.schools().types()) {
+            GameConfig typed = config.withPlayerSchoolType(type.key());
+            YearRunner runner = new YearRunner(new GameEngine(typed));
+            for (Strategy strategy : strategies) {
+                StrategyReport report = new StrategyReport(strategy.name(), typed,
+                        typed.rules().calendar().weeksPerYear());
+                for (long seed = seedStart; seed < seedStart + runs; seed++) {
+                    report.add(runner.run(seed, strategy));
+                }
+                rows.add(new ReportPrinter.SchoolTypeRow(type.name(), type.strength(), report));
+            }
+        }
+        System.err.printf("학교 유형별 %d판 × %d조합 완료 (%.1f초)%n", runs, rows.size(),
+                (System.nanoTime() - started) / 1e9);
+        return new ReportPrinter(config).renderSchoolTypes(rows, runs);
     }
 }

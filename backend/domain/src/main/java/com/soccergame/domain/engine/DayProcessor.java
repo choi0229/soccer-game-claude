@@ -258,10 +258,11 @@ final class DayProcessor {
                 events.trigger(s, meetTarget, "MEET").ifPresent(e -> newEvents.add(e.id()));
             }
         }
-        endOfDay(s, log, rules.daily().nightRecovery() + rules.daily().sundayExtraRecovery());
+        // 무작위 이벤트는 밤 회복 전에 뽑는다
         if (s.rng.chance(rules.events().sundayChance())) {
             events.trigger(s, null, "SUNDAY").ifPresent(e -> newEvents.add(e.id()));
         }
+        endOfDay(s, log, rules.daily().nightRecovery() + rules.daily().sundayExtraRecovery());
         endOfWeek(s, log);
         return new ActionOutcome(date, log, null, newEvents);
     }
@@ -278,8 +279,14 @@ final class DayProcessor {
         }
     }
 
-    /** 일요일이 끝나면 학업 점검을 하고 다음 주 월요일로 넘어간다. */
+    /** 일요일이 끝나면 학기 중 학업 감소, 학업 점검을 하고 다음 주 월요일로 넘어간다. */
     private void endOfWeek(GameState s, List<LogEntry> log) {
+        double weekly = rules.academics().semesterWeeklyChange();
+        if (weekly != 0 && !calendar.isVacation(s.week)) {
+            resources.academics(s, weekly);
+            log.add(new LogEntry("학업", "학기 중 한 주가 지나 학업 성취 " + Resources.signed(weekly)
+                    + " (현재 " + Math.round(s.academics) + ")"));
+        }
         for (Rules.AcademicCheck check : rules.academics().checks()) {
             if (calendar.weekIndex(check.at()) != s.week) {
                 continue;

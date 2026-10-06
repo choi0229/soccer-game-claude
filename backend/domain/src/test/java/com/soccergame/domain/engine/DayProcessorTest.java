@@ -32,13 +32,13 @@ class DayProcessorTest {
         assertThat(out.log()).extracting(LogEntry::slot).containsExactly("새벽", "오전", "오후", "야간", "밤");
         // 수업 집중: 1.5 × (1 + 30/200)
         assertThat(s.academics).isCloseTo(50 + 1.5 * 1.15, within(1e-9));
-        // 오후 슈팅(팀 0.15), 야간 파워(개인 0.10, 주력 1.2배)
-        assertThat(s.stats.get("finishing") - finishing).isCloseTo(0.15, within(1e-9));
-        assertThat(s.stats.get("composure") - composure).isCloseTo(0.15, within(1e-9));
-        assertThat(s.stats.get("shotPower") - power).isCloseTo(0.12, within(1e-9));
-        assertThat(s.stats.get("kickPower") - kick).isCloseTo(0.12, within(1e-9));
-        // 체력: 60 + 8 - 2 - 8 - 6 + 14
-        assertThat(s.stamina).isCloseTo(66, within(1e-9));
+        // 오후 슈팅(팀 0.09), 야간 파워(개인 0.06, 주력 1.2배)
+        assertThat(s.stats.get("finishing") - finishing).isCloseTo(0.09, within(1e-9));
+        assertThat(s.stats.get("composure") - composure).isCloseTo(0.09, within(1e-9));
+        assertThat(s.stats.get("shotPower") - power).isCloseTo(0.072, within(1e-9));
+        assertThat(s.stats.get("kickPower") - kick).isCloseTo(0.072, within(1e-9));
+        // 체력: 60 + 8 - 2 - 8 - 6 + 8
+        assertThat(s.stamina).isCloseTo(60, within(1e-9));
         assertThat(s.day).isEqualTo(Weekday.TUE);
         assertThat(s.menuTrainingCounts).containsEntry("shooting", 1).containsEntry("power", 1);
     }
@@ -51,7 +51,7 @@ class DayProcessorTest {
         ActionOutcome out = ENGINE.apply(s, new Action.Day(DawnChoice.SLEEP, null,
                 Map.of(TrainingSlot.MORNING, "aerial", TrainingSlot.AFTERNOON, "shooting", TrainingSlot.NIGHT, "shooting")));
         assertThat(out.log().get(1).text()).startsWith("팀 훈련 [제공권]");
-        assertThat(s.stats.get("heading") - heading).isCloseTo(0.18, within(1e-9));
+        assertThat(s.stats.get("heading") - heading).isCloseTo(0.108, within(1e-9));
         assertThat(s.academics).isEqualTo(50);
     }
 
@@ -84,8 +84,8 @@ class DayProcessorTest {
         assertThat(out.log().get(2).text()).contains("제외");
         assertThat(out.log().get(3).text()).contains("제외");
         assertThat(s.excludedToday).isTrue();
-        // 첫날 오후 팀 훈련 0.15 + 야간 개인 훈련 0.10 (둘째 날은 제외되어 성장 없음)
-        assertThat(s.stats.get("finishing") - finishing).isCloseTo(0.25, within(1e-9));
+        // 첫날 오후 팀 훈련 0.09 + 야간 개인 훈련 0.06 (둘째 날은 제외되어 성장 없음)
+        assertThat(s.stats.get("finishing") - finishing).isCloseTo(0.15, within(1e-9));
     }
 
     @Test
@@ -100,8 +100,8 @@ class DayProcessorTest {
                 .extracting(LogEntry::text).allMatch(t -> t.startsWith("재활"));
         assertThat(s.stats.get("finishing")).isEqualTo(before.get("finishing"));
         assertThat(s.stats.get("fitness")).isEqualTo(before.get("fitness"));
-        // 50 + 8(운동 대신 더 자기) - 2(수업) + 14
-        assertThat(s.stamina).isEqualTo(70);
+        // 50 + 8(운동 대신 더 자기) - 2(수업) + 8
+        assertThat(s.stamina).isEqualTo(64);
     }
 
     @Test
@@ -134,7 +134,7 @@ class DayProcessorTest {
         s.stamina = 20;
         int week = s.week;
         ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
-        assertThat(s.stamina).isEqualTo(Math.min(20 + 25 + 14 + 20, ENGINE.resources().maxStamina(s)));
+        assertThat(s.stamina).isEqualTo(Math.min(20 + 25 + 8 + 20, ENGINE.resources().maxStamina(s)));
         assertThat(s.condition).isEqualTo(3);
         assertThat(s.week).isEqualTo(week + 1);
         assertThat(s.day).isEqualTo(Weekday.MON);
@@ -175,8 +175,11 @@ class DayProcessorTest {
         GameState s = ENGINE.newGame(8);
         s.week = ENGINE.calendar().weekIndex(7, 3);
         s.day = Weekday.SUN;
-        s.academics = 20;
+        s.academics = 31;
+        // 학기 주 감소(-2)가 먼저 적용되어 29 → 점검 미달
         ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
+        assertThat(s.academicChecks.getFirst().academics()).isEqualTo(29);
+        s.academics = 20;
         assertThat(s.remedialWeeks).containsExactly(24, 25);
         assertThat(s.academicChecks).hasSize(1);
         assertThat(s.academicChecks.getFirst().failed()).isTrue();
@@ -191,7 +194,39 @@ class DayProcessorTest {
         assertThat(out.log().get(2).text()).startsWith("보충수업");
         assertThat(s.stats.get("finishing")).isEqualTo(finishing);
         assertThat(s.academics).isCloseTo(20 - 0.5 + 1, within(1e-9));
-        assertThat(s.stamina).isEqualTo(stamina + 8 + 8 - 6 + 14);
+        assertThat(s.stamina).isEqualTo(stamina + 8 + 8 - 6 + 8);
+    }
+
+    @Test
+    void academicsDropEverySemesterWeekButNotInVacation() {
+        GameState s = plainSemesterMonday(11);
+        s.day = Weekday.SUN;
+        s.academics = 50;
+        ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
+        assertThat(s.academics).isEqualTo(48);
+
+        GameState v = ENGINE.newGame(11);
+        v.week = ENGINE.calendar().weekIndex(8, 2);
+        v.day = Weekday.SUN;
+        v.academics = 50;
+        ENGINE.apply(v, new Action.Sunday(SundayActivity.REST, null));
+        assertThat(v.academics).isEqualTo(50);
+    }
+
+    @Test
+    void sundayRandomEventSeesStaminaBeforeNightRecovery() {
+        // 몸살 기운(common_002)은 체력 50 이하에서만 나온다. 아르바이트 뒤 체력 20 → 회복 전에 뽑으므로 나올 수 있다.
+        int fired = 0;
+        for (long seed = 0; seed < 400; seed++) {
+            GameState s = plainSemesterMonday(seed);
+            s.day = Weekday.SUN;
+            s.stamina = 30;
+            ENGINE.apply(s, new Action.Sunday(SundayActivity.PART_TIME, null));
+            if (s.eventHistory.contains("common_002")) {
+                fired++;
+            }
+        }
+        assertThat(fired).isPositive();
     }
 
     @Test

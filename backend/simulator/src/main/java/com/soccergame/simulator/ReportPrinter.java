@@ -126,6 +126,43 @@ public final class ReportPrinter {
         return out.toString();
     }
 
+    public record SchoolTypeRow(String typeName, double strength, StrategyReport report) {
+    }
+
+    public String renderSchoolTypes(List<SchoolTypeRow> rows, int runs) {
+        out.setLength(0);
+        section("7. 학교 유형별 출전과 리그 순위 (조합마다 " + runs + "판)");
+        line("| 학교 유형 (전력) | 전략 | 선발 | 교체 | 벤치 | 부상 결장 | 평균 평점 | 평균 순위 | 1위 | 1~4위 | 8위 |");
+        line("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
+        for (SchoolTypeRow row : rows) {
+            StrategyReport r = row.report();
+            double rankSum = 0;
+            int top4 = 0;
+            for (int rank = 1; rank <= 8; rank++) {
+                rankSum += rank * r.leagueRank[rank];
+                if (rank <= 4) {
+                    top4 += r.leagueRank[rank];
+                }
+            }
+            line("| " + row.typeName() + " (" + f0(row.strength()) + ") | " + r.strategy + " | "
+                    + pct(r.roles.get(MatchRole.STARTER), r.matches) + " | "
+                    + pct(r.roles.get(MatchRole.SUB), r.matches) + " | "
+                    + pct(r.roles.get(MatchRole.BENCH), r.matches) + " | "
+                    + pct(r.roles.get(MatchRole.ABSENT), r.matches) + " | "
+                    + (r.appearances == 0 ? "- (출전 없음)" : f2(r.ratingSum / r.appearances)) + " | "
+                    + f2(rankSum / r.runs) + " | "
+                    + pct(r.leagueRank[1], r.runs) + " | "
+                    + pct(top4, r.runs) + " | "
+                    + pct(r.leagueRank[8], r.runs) + " |");
+        }
+        line("");
+        return out.toString();
+    }
+
+    private static String f0(double v) {
+        return String.format(Locale.ROOT, "%.0f", v);
+    }
+
     private void section(String title) {
         line("## " + title);
         line("");

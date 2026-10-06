@@ -79,7 +79,7 @@ class CompetitionsTest {
         MatchRecord m = out.match();
         assertThat(m.role()).isEqualTo(MatchRole.STARTER);
         assertThat(m.rating()).isNotNull();
-        assertThat(s.stamina).isCloseTo(Math.min(50 - 12 + 14, ENGINE.resources().maxStamina(s)), within(1e-9));
+        assertThat(s.stamina).isCloseTo(Math.min(50 - 12 + 8, ENGINE.resources().maxStamina(s)), within(1e-9));
         // 출전하면 패시브 4종 중 하나가 +0.5
         double after = ENGINE.config().passiveStatKeys().stream().mapToDouble(s.stats::get).sum();
         assertThat(after - passiveSum).isCloseTo(0.5, within(1e-9));
@@ -103,7 +103,7 @@ class CompetitionsTest {
         assertThat(bench.role()).isEqualTo(MatchRole.BENCH);
         assertThat(bench.rating()).isNull();
         assertThat(bench.scenes()).isEmpty();
-        assertThat(s.stamina).isEqualTo(stamina + 14);
+        assertThat(s.stamina).isEqualTo(stamina + 8);
 
         GameState t = ENGINE.newGame(5);
         t.week = ENGINE.calendar().weekIndex(4, 1);

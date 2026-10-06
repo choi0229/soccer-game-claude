@@ -31,13 +31,27 @@ class MatchEngineTest {
     void selectionThresholds() {
         Stats s = stats(27.5, 40);
         double score = engine.selectionScore(30, s);
-        assertThat(score).isCloseTo(28.75, within(1e-9));
+        // 30 × 0.3 + 27.5 × 0.7
+        assertThat(score).isCloseTo(28.25, within(1e-9));
         assertThat(engine.role(score, 40, false)).isEqualTo(MatchRole.SUB);
         assertThat(engine.role(35, 40, false)).isEqualTo(MatchRole.STARTER);
         assertThat(engine.role(34.99, 40, false)).isEqualTo(MatchRole.SUB);
         assertThat(engine.role(20, 40, false)).isEqualTo(MatchRole.SUB);
         assertThat(engine.role(19.99, 40, false)).isEqualTo(MatchRole.BENCH);
         assertThat(engine.role(100, 40, true)).isEqualTo(MatchRole.ABSENT);
+    }
+
+    @Test
+    void selectionUsesTopSixTrainedStats() {
+        Stats s = stats(10, 40);
+        List<String> keys = config.trainedStatKeys();
+        for (int i = 0; i < 6; i++) {
+            s.set(keys.get(i), 70);
+        }
+        // 상위 6개 평균 70 (나머지 10 은 무시), 패시브는 포함하지 않는다
+        assertThat(engine.selectionScore(50, s)).isCloseTo(50 * 0.3 + 70 * 0.7, within(1e-9));
+        s.set("fitness", 100);
+        assertThat(engine.selectionScore(50, s)).isCloseTo(50 * 0.3 + 70 * 0.7, within(1e-9));
     }
 
     @Test

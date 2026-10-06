@@ -31,7 +31,7 @@ export default function Header({ view, onQuit }: { view: GameView; onQuit: () =>
         {Object.entries(r.affinity).map(([k, v]) => (
           <div key={k}>{affinityLabel[k] ?? k} <b>{f0(v)}</b></div>
         ))}
-        <div title="감독 관계도 × 0.5 + 훈련 능력치 평균 × 0.5">
+        <div title="감독 관계도와 훈련 능력치 상위 평균으로 계산 (가중치는 설정 파일)">
           출전 점수 <b>{f1(r.selectionScore)}</b> → {r.expectedRole}
         </div>
         {r.injured && <div className="error">부상 (복귀: {r.injuredUntil})</div>}

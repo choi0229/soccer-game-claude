@@ -129,7 +129,7 @@ public record Rules(
     }
 
     public record AcademicsRules(double start, double min, double max, double remedialGain,
-                                 List<AcademicCheck> checks) {
+                                 double semesterWeeklyChange, List<AcademicCheck> checks) {
     }
 
     public record AcademicCheck(WeekRef at, double below, List<WeekRef> remedialWeeks) {
@@ -171,7 +171,8 @@ public record Rules(
         }
     }
 
-    public record Selection(double coachWeight, double statWeight, double starterMargin, double subMargin) {
+    public record Selection(double coachWeight, double statWeight, int topStatCount, double starterMargin,
+                            double subMargin) {
     }
 
     public record TeamGoals(double base, double perStrength, double min, double max) {
