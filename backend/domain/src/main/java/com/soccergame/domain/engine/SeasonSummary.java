@@ -13,7 +13,7 @@ import java.util.Map;
 public record SeasonSummary(List<StatChange> stats, Map<MatchRole, Integer> roles, int appearances, int goals,
                             int assists, Double averageRating, int wins, int draws, int losses, int leagueRank,
                             List<String> cupStages, String cupResult, double academics,
-                            List<AcademicCheckResult> academicChecks, double reputation, long money, int injuries,
+                            int makeupWeeks, int makeupDays, double reputation, long money, int injuries,
                             int exclusions, int events) {
 
     public record StatChange(String key, String name, boolean primary, boolean passive, double start, double end,
@@ -57,7 +57,7 @@ public record SeasonSummary(List<StatChange> stats, Map<MatchRole, Integer> role
         return new SeasonSummary(stats, roles, apps, goals, assists,
                 apps == 0 ? null : Math.round(ratingSum / apps * 100) / 100.0, w, d, l,
                 s.league.rankOf(s.playerSchoolId), List.copyOf(s.cupStagesReached), cupResult, s.academics,
-                List.copyOf(s.academicChecks), s.reputation, s.money, s.metrics.injuries, s.metrics.exclusions,
+                s.makeupWeeks.size(), s.metrics.makeupDays, s.reputation, s.money, s.metrics.injuries, s.metrics.exclusions,
                 s.eventHistory.size());
     }
 

@@ -124,13 +124,13 @@ academics:
   start: 50
   min: 0
   max: 100
-  remedialGain: 1
   # 학기 중인 주가 끝날 때마다(일요일 처리 끝) 현재 학업 성취 × 이 비율만큼 더한다. 방학 주에는 적용하지 않는다.
   semesterWeeklyRate: -0.06
-  checks:
-    - { at: { month: 7, week: 3 }, below: 30, remedialWeeks: [ { month: 9, week: 1 }, { month: 9, week: 2 } ] }
-    # 다음 학기(2학년 3월)는 1년 범위 밖이므로 점검 결과만 기록한다
-    - { at: { month: 12, week: 4 }, below: 30, remedialWeeks: [] }
+  # 한 주가 끝날 때(학기 중 감소 뒤) 학업 성취가 below 미만이면 다음 주 월~금 오후 팀 훈련이 '나머지 공부'로 바뀐다.
+  # 학기 중과 방학 모두 적용. 나머지 공부는 성장 없음, 학업 성취 academics, 체력 stamina.
+  makeup: { below: 30, academics: 2, stamina: -4 }
+  # 화면 헤더에 학업 경고를 띄우는 기준
+  warningBelow: 35
 
 relationships:
   min: 0

@@ -74,8 +74,9 @@ public final class ReportPrinter {
         section("3. 학업");
         header("항목", reports);
         distRow("1년 뒤 학업 성취", reports, r -> r.academics);
-        row("보충수업 발생 비율 (7월 점검)", reports, r -> pct(r.remedialRuns, r.runs));
-        row("12월 점검 미달 비율 (영향은 다음 학년)", reports, r -> pct(r.decemberFailRuns, r.runs));
+        distRow("나머지 공부 주 수/년", reports, r -> r.makeupWeeks);
+        distRow("실제 나머지 공부 일 수/년 (경기일 제외)", reports, r -> r.makeupDays);
+        row("나머지 공부 1주 이상 판 비율", reports, r -> pct(r.makeupRuns, r.runs));
         line("");
 
         section("4. 경기");

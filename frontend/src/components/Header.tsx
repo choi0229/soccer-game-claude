@@ -11,7 +11,7 @@ export default function Header({ view, onQuit }: { view: GameView; onQuit: () =>
           <strong className="date">{view.date.label}</strong>{' '}
           <span className={view.date.vacation ? 'tag vacation' : 'tag'}>{view.date.term}</span>{' '}
           <span className="muted">
-            {view.date.week}주차 / 48 · {view.school.name} ({view.school.typeName}, 전력 {view.school.strength}) · {view.school.region}
+            {view.date.week}주차 / {view.date.weeksPerYear} · {view.school.name} ({view.school.typeName}, 전력 {view.school.strength}) · {view.school.region}
           </span>
         </div>
         <div className="muted small">
@@ -20,9 +20,10 @@ export default function Header({ view, onQuit }: { view: GameView; onQuit: () =>
         </div>
       </div>
       <div className="resources">
-        <div className="stamina">
-          체력 {f0(r.stamina)} / {f0(r.maxStamina)}
-          <div className="bar"><div style={{ width: `${staminaPct}%` }} className={staminaPct < 30 ? 'low' : ''} /></div>
+        <div className="stamina" title={r.staminaInfo.maxFormula}>
+          체력 {f0(r.stamina)} / {f0(r.maxStamina)} <span className="help">ⓘ</span>
+          <div className="bar"><div style={{ width: `${staminaPct}%` }} className={r.stamina < r.staminaInfo.lowBelow ? 'low' : ''} /></div>
+          <div className="muted tiny">{r.staminaInfo.maxFormula}</div>
         </div>
         <div>컨디션 <b>{r.conditionName}</b></div>
         <div>돈 <b>{won(r.money)}</b></div>
@@ -36,6 +37,7 @@ export default function Header({ view, onQuit }: { view: GameView; onQuit: () =>
         </div>
         {r.injured && <div className="error">부상 (복귀: {r.injuredUntil})</div>}
       </div>
+      {r.academicsInfo.warning && <div className="warning">⚠ {r.academicsInfo.warning}</div>}
     </header>
   );
 }

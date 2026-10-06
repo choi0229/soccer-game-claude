@@ -1,4 +1,4 @@
-import type { ActionOutcome, ActionRequest, GameView } from './types';
+import type { ActionOutcome, ActionRequest, GameView, Meta } from './types';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -25,6 +25,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  meta: () => request<Meta>('/api/meta'),
   createRun: (seed?: number) =>
     request<GameView>('/api/runs', { method: 'POST', body: JSON.stringify(seed === undefined ? {} : { seed }) }),
   getRun: (runId: string) => request<GameView>(`/api/runs/${runId}`),

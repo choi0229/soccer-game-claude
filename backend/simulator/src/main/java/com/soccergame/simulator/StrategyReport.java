@@ -27,8 +27,9 @@ public final class StrategyReport {
     final List<Double> exclusions = new ArrayList<>();
     final List<Double> injuries = new ArrayList<>();
     final List<Double> academics = new ArrayList<>();
-    int remedialRuns;
-    int decemberFailRuns;
+    final List<Double> makeupWeeks = new ArrayList<>();
+    final List<Double> makeupDays = new ArrayList<>();
+    int makeupRuns;
     final Map<MatchRole, Integer> roles = new EnumMap<>(MatchRole.class);
     int matches;
     int appearances;
@@ -80,11 +81,10 @@ public final class StrategyReport {
         exclusions.add((double) s.metrics.exclusions);
         injuries.add((double) s.metrics.injuries);
         academics.add(s.academics);
-        if (!s.remedialWeeks.isEmpty()) {
-            remedialRuns++;
-        }
-        if (s.academicChecks.size() > 1 && s.academicChecks.get(1).failed()) {
-            decemberFailRuns++;
+        makeupWeeks.add((double) s.makeupWeeks.size());
+        makeupDays.add((double) s.metrics.makeupDays);
+        if (!s.makeupWeeks.isEmpty()) {
+            makeupRuns++;
         }
         int g = 0;
         int a = 0;

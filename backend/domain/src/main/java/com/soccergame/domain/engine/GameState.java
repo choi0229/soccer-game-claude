@@ -18,7 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
+import java.util.TreeMap;
 
 /**
  * 한 판의 전체 상태. 규칙은 GameEngine 과 그 협력 클래스에 있고, 이 클래스는 값만 담는다.
@@ -63,9 +63,8 @@ public final class GameState {
     public final Deque<PendingEvent> pendingEvents = new ArrayDeque<>();
     public final List<String> eventHistory = new ArrayList<>();
 
-    /** 보충수업 주 */
-    public final Set<Integer> remedialWeeks = new TreeSet<>();
-    public final List<AcademicCheckResult> academicChecks = new ArrayList<>();
+    /** 나머지 공부 주 → 그 직전 주를 마칠 때의 학업 성취 (이유 표시용) */
+    public final Map<Integer, Double> makeupWeeks = new TreeMap<>();
 
     public final List<MatchRecord> matches = new ArrayList<>();
     public final List<String> cupStagesReached = new ArrayList<>();

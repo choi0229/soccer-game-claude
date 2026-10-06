@@ -1,5 +1,6 @@
 import type { ActionRequest, GameView } from '../types';
 import { useUiStore } from '../store';
+import { f0 } from '../format';
 
 interface Props {
   view: GameView;
@@ -30,7 +31,9 @@ export default function SundayPanel({ view, pending, onSubmit }: Props) {
           )}
         </label>
       ))}
-      <p className="muted small">밤에 체력이 자동으로 회복되고(+14, 일요일 +20 추가), 이벤트가 생길 수 있습니다.</p>
+      <p className="muted small">
+        밤에 체력이 자동으로 회복되고(밤 회복 +{f0(view.resources.staminaInfo.nightRecovery)}{view.date.vacation ? ' (방학)' : ''}, 일요일 추가 +{f0(view.resources.staminaInfo.sundayExtraRecovery)}), 이벤트가 생길 수 있습니다.
+      </p>
       <button className="primary" disabled={pending} onClick={submit}>
         {pending ? '진행 중…' : '확인 — 다음 주로'}
       </button>

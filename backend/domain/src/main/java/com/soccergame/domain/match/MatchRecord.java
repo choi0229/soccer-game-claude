@@ -15,7 +15,7 @@ public record MatchRecord(Competition competition, String roundLabel, int week, 
                           boolean home, MatchRole role, double selectionScore,
                           int teamGoals, int opponentGoals, int playerGoals, int playerAssists, int pressGoals,
                           int ourScore, int theirScore, Boolean penaltyWin, String result,
-                          Double rating, double reputationGained, String passiveGrowth,
+                          Double rating, double reputationGained, String passiveGrowth, Double passiveGrowthAmount,
                           List<SceneLog> scenes, List<TimelineEntry> timeline) {
 
     public boolean won() {

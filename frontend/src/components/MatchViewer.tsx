@@ -6,7 +6,7 @@ import { f1, resultLabel, roleLabel } from '../format';
 const STEP_MS = 650;
 
 /** 경기 결과. 스코어와 평점은 서버가 확정한 값이고, 중계는 순서대로 한 줄씩 보여 준다. */
-export default function MatchViewer({ match }: { match: MatchRecord }) {
+export default function MatchViewer({ match, cupName }: { match: MatchRecord; cupName: string }) {
   const playback = useUiStore((s) => s.playback)!;
   const advance = useUiStore((s) => s.advancePlayback);
   const skip = useUiStore((s) => s.skipPlayback);
@@ -26,7 +26,7 @@ export default function MatchViewer({ match }: { match: MatchRecord }) {
     <div className="box match">
       <div className="row between">
         <h2>
-          {match.competition === 'CUP' ? '춘계배' : '주말리그'} {match.roundLabel} · {match.home ? '홈' : '원정'} vs {match.opponentName}
+          {match.competition === 'CUP' ? cupName : '주말리그'} {match.roundLabel} · {match.home ? '홈' : '원정'} vs {match.opponentName}
         </h2>
         <div>
           {!done && <button onClick={skip}>건너뛰기</button>}{' '}
@@ -53,7 +53,7 @@ export default function MatchViewer({ match }: { match: MatchRecord }) {
             <>
               평점 <b>{f1(match.rating)}</b> · 골 {match.playerGoals} · 도움 {match.playerAssists}
               {match.pressGoals > 0 && ` · 압박 득점 ${match.pressGoals}`} · 평판 +{f1(match.reputationGained)}
-              {match.passiveGrowth && ` · ${match.passiveGrowth} +0.5`}
+              {match.passiveGrowth && match.passiveGrowthAmount !== null && ` · ${match.passiveGrowth} +${match.passiveGrowthAmount}`}
             </>
           ) : (
             <span className="muted">{roleLabel[match.role]} — 평점 없음</span>

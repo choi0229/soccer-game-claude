@@ -76,7 +76,7 @@ function MatchList({ view }: { view: GameView }) {
         {view.matches.map((m, i) => (
           <tr key={i} className="clickable" onClick={() => showMatch(i)}>
             <td className="small">{m.dateLabel}</td>
-            <td className="small">{m.competition === 'CUP' ? '춘계배' : '리그'} {m.roundLabel}</td>
+            <td className="small">{m.competition === 'CUP' ? view.cup.name : '리그'} {m.roundLabel}</td>
             <td>{m.opponentName}</td>
             <td>{m.ourScore}:{m.theirScore} {resultLabel(m.result, m.penaltyWin)}</td>
             <td>{roleLabel[m.role]}</td>

@@ -16,8 +16,8 @@ public record GameView(UUID runId, long seed, int actionCount, String fingerprin
                        EventView pendingEvent, ActionOutcome lastOutcome, List<MatchRecord> matches,
                        SeasonSummary summary) {
 
-    public record DateView(int week, int month, int weekOfMonth, String day, String dayLabel, String label,
-                           String term, boolean vacation) {
+    public record DateView(int week, int weeksPerYear, int month, int weekOfMonth, String day, String dayLabel,
+                           String label, String term, boolean vacation) {
     }
 
     public record MatchPreview(String competition, String round, int opponentId, String opponentName,
@@ -30,7 +30,19 @@ public record GameView(UUID runId, long seed, int actionCount, String fingerprin
     public record ResourcesView(double stamina, double maxStamina, int condition, String conditionName, long money,
                                 double academics, double reputation, Map<String, Double> affinity,
                                 double schoolLifeMultiplier, boolean injured, String injuredUntil,
-                                double selectionScore, String expectedRole) {
+                                double selectionScore, String expectedRole, StaminaInfo staminaInfo,
+                                AcademicsInfo academicsInfo) {
+    }
+
+    /**
+     * 체력 설명용 서버 값. nightRecovery 는 오늘 밤(학기 중/방학) 회복량, sundayExtraRecovery 는 일요일 추가분.
+     * lowBelow 는 부상 위험이 생기는 체력.
+     */
+    public record StaminaInfo(double nightRecovery, double sundayExtraRecovery, double lowBelow, String maxFormula) {
+    }
+
+    /** warning 은 학업 성취가 경고 기준 미만일 때의 안내 문구 (아니면 null) */
+    public record AcademicsInfo(double makeupBelow, double warningBelow, String warning) {
     }
 
     public record StatView(String key, String name, String group, boolean primary, boolean passive, double value,

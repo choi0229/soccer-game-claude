@@ -1,16 +1,21 @@
 import { useState } from 'react';
-import { useCreateRun } from '../queries';
+import { useCreateRun, useMeta } from '../queries';
 
 export default function StartScreen() {
   const [seed, setSeed] = useState('');
   const create = useCreateRun();
+  const meta = useMeta().data;
   const parsed = seed.trim() === '' ? undefined : Number(seed);
   const invalid = parsed !== undefined && (!Number.isSafeInteger(parsed) || parsed < 0);
 
   return (
     <div className="start">
       <h1>고교 축구 육성 시뮬레이션</h1>
-      <p>고1 축구부 공격수(파워형)가 되어 3월부터 다음 해 2월까지 48주를 보냅니다.</p>
+      {meta && (
+        <p>
+          고1 축구부 {meta.position}({meta.archetype})가 되어 {meta.startLabel}부터 {meta.endLabel}까지 {meta.weeksPerYear}주를 보냅니다.
+        </p>
+      )}
       <label>
         시드 (비우면 무작위)
         <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="예: 42" inputMode="numeric" />

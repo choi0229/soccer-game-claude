@@ -145,6 +145,7 @@ final class Competitions {
                 them.strength(), defender.name(), home, role, Math.round(score * 10) / 10.0, r.teamGoals(),
                 r.opponentGoals(), r.playerGoals(), r.playerAssists(), r.pressGoals(), r.ourScore(), r.theirScore(),
                 r.penaltyWin(), result, rating, reputation, growth == null ? null : config.stat(growth).name(),
+                growth == null ? null : mr.passive().growthPerMatch(),
                 r.scenes(), r.timeline());
         s.matches.add(record);
         return record;

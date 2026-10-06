@@ -82,8 +82,8 @@ final class DayProcessor {
         if (playerInCup) {
             log.add(new LogEntry("오후·야간", calendar.cupName() + " " + matchSummary(match)));
         } else {
-            if (s.remedialWeeks.contains(s.week)) {
-                remedial(s, log);
+            if (s.makeupWeeks.containsKey(s.week)) {
+                makeup(s, log);
             } else {
                 trainingSlot(s, log, AFTERNOON, Kind.TEAM, TrainingSlot.AFTERNOON);
             }
@@ -143,9 +143,15 @@ final class DayProcessor {
         }
     }
 
-    private void remedial(GameState s, List<LogEntry> log) {
-        resources.academics(s, rules.academics().remedialGain());
-        log.add(new LogEntry(AFTERNOON, "보충수업: 학업 성취 " + Resources.signed(rules.academics().remedialGain())));
+    /** 나머지 공부: 성장 없음. 훈련이 아니므로 체력 고갈·부상 판정을 하지 않고, 부상 중에도 한다. */
+    private void makeup(GameState s, List<LogEntry> log) {
+        Rules.Makeup m = rules.academics().makeup();
+        resources.academics(s, m.academics());
+        resources.stamina(s, m.stamina());
+        s.metrics.makeupDays++;
+        log.add(new LogEntry(AFTERNOON, "나머지 공부: 학업 성취 " + Resources.signed(m.academics()) + ", 체력 "
+                + Resources.signed(m.stamina()) + " (지난주를 학업 성취 " + round2(s.makeupWeeks.get(s.week))
+                + "로 마쳐 " + Resources.plain(m.below()) + " 미만)"));
     }
 
     /** 체력 고갈 검사. 훈련할 수 없으면 false. */
@@ -238,16 +244,23 @@ final class DayProcessor {
         List<String> newEvents = new ArrayList<>();
         String date = calendar.label(s.week, s.day);
         Rules.SundayRules sr = rules.daily().sunday();
+        double staminaBefore = s.stamina;
+        String activityStamina = null;
+        double activityDelta = 0;
         switch (activity) {
             case REST -> {
                 resources.stamina(s, sr.rest().stamina());
                 resources.condition(s, sr.rest().condition());
+                activityStamina = "휴식";
+                activityDelta = sr.rest().stamina();
                 log.add(new LogEntry("일요일", "휴식: 체력 " + Resources.signed(sr.rest().stamina()) + ", 컨디션 "
                         + Resources.signed(sr.rest().condition())));
             }
             case PART_TIME -> {
                 resources.money(s, sr.partTime().money());
                 resources.stamina(s, sr.partTime().stamina());
+                activityStamina = "아르바이트";
+                activityDelta = sr.partTime().stamina();
                 log.add(new LogEntry("일요일", "아르바이트: 돈 +" + sr.partTime().money() + "원, 체력 "
                         + Resources.signed(sr.partTime().stamina())));
             }
@@ -262,7 +275,7 @@ final class DayProcessor {
         if (s.rng.chance(rules.events().sundayChance())) {
             events.trigger(s, null, "SUNDAY").ifPresent(e -> newEvents.add(e.id()));
         }
-        endOfDay(s, log, nightRecovery(s) + rules.daily().sundayExtraRecovery());
+        sundayNight(s, log, activityStamina, activityDelta, staminaBefore);
         endOfWeek(s, log);
         return new ActionOutcome(date, log, null, newEvents);
     }
@@ -272,6 +285,31 @@ final class DayProcessor {
     /** 방학 주와 학기 중의 밤 회복량이 다르다 */
     private double nightRecovery(GameState s) {
         return calendar.isVacation(s.week) ? rules.daily().vacationNightRecovery() : rules.daily().nightRecovery();
+    }
+
+    /** 일요일 밤: 회복 내역을 나눠 기록한다 (자유 행동, 밤 회복, 일요일 추가 회복, 합계) */
+    private void sundayNight(GameState s, List<LogEntry> log, String activity, double activityDelta,
+                             double staminaBefore) {
+        double night = nightRecovery(s);
+        double extra = rules.daily().sundayExtraRecovery();
+        s.metrics.staminaSum[s.week] += s.stamina;
+        s.metrics.staminaSamples[s.week]++;
+        resources.stamina(s, night + extra);
+        double nominal = activityDelta + night + extra;
+        double actual = s.stamina - staminaBefore;
+        StringBuilder text = new StringBuilder("체력 ");
+        if (activity != null) {
+            text.append(activity).append(' ').append(Resources.signed(activityDelta)).append(", ");
+        }
+        text.append(calendar.isVacation(s.week) ? "방학 밤 회복 " : "밤 회복 ").append(Resources.signed(night))
+                .append(", 일요일 추가 회복 ").append(Resources.signed(extra))
+                .append(", 합계 ").append(Resources.signed(nominal));
+        if (Math.abs(actual - nominal) > 1e-9) {
+            text.append(" (최대 체력 ").append(Math.round(resources.maxStamina(s))).append(" 제한으로 실제 ")
+                    .append(Resources.signed(round2(actual))).append(')');
+        }
+        text.append(" → 현재 ").append(Math.round(s.stamina));
+        log.add(new LogEntry("밤", text.toString()));
     }
 
     private void endOfDay(GameState s, List<LogEntry> log, double recovery) {
@@ -284,7 +322,7 @@ final class DayProcessor {
         }
     }
 
-    /** 일요일이 끝나면 학기 중 학업 감소, 학업 점검을 하고 다음 주 월요일로 넘어간다. */
+    /** 일요일이 끝나면 학기 중 학업 감소, 나머지 공부 판정을 하고 다음 주 월요일로 넘어간다. */
     private void endOfWeek(GameState s, List<LogEntry> log) {
         double rate = rules.academics().semesterWeeklyRate();
         if (rate != 0 && !calendar.isVacation(s.week)) {
@@ -293,26 +331,10 @@ final class DayProcessor {
             log.add(new LogEntry("학업", "학기 중 한 주가 지나 학업 성취 " + Resources.signed(round2(weekly))
                     + " (현재 " + Math.round(s.academics) + ")"));
         }
-        for (Rules.AcademicCheck check : rules.academics().checks()) {
-            if (calendar.weekIndex(check.at()) != s.week) {
-                continue;
-            }
-            boolean failed = s.academics < check.below();
-            int weeks = 0;
-            if (failed) {
-                for (Rules.WeekRef ref : check.remedialWeeks()) {
-                    int w = calendar.weekIndex(ref);
-                    if (w > s.week && w < calendar.weeksPerYear()) {
-                        s.remedialWeeks.add(w);
-                        weeks++;
-                    }
-                }
-            }
-            String label = check.at().month() + "월 " + check.at().week() + "주 학업 점검";
-            s.academicChecks.add(new AcademicCheckResult(label, s.academics, failed, weeks));
-            log.add(new LogEntry("학업 점검", label + ": 학업 성취 " + Math.round(s.academics)
-                    + (failed ? (weeks > 0 ? " → 보충수업 " + weeks + "주" : " → 기준 미달 (보충수업은 다음 학년)")
-                    : " → 통과")));
+        Rules.Makeup makeup = rules.academics().makeup();
+        if (s.academics < makeup.below() && s.week + 1 < calendar.weeksPerYear()) {
+            s.makeupWeeks.put(s.week + 1, s.academics);
+            log.add(new LogEntry("학업", "학업 성취 " + round2(s.academics) + "로 한 주를 마쳐 다음 주 오후 팀 훈련이 나머지 공부로 바뀐다."));
         }
         s.week++;
         s.day = Weekday.MON;

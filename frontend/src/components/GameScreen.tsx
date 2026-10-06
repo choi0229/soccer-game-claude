@@ -31,7 +31,7 @@ export default function GameScreen({ view }: { view: GameView }) {
           {view.phase === 'SATURDAY' && <SaturdayPanel view={view} pending={act.isPending} onSubmit={act.mutate} />}
           {view.phase === 'SUNDAY' && <SundayPanel view={view} pending={act.isPending} onSubmit={act.mutate} />}
           {view.phase === 'FINISHED' && <SeasonSummaryView view={view} />}
-          {match && playback && <MatchViewer match={match} />}
+          {match && playback && <MatchViewer match={match} cupName={view.cup.name} />}
           <RecentLog runId={view.runId} />
         </section>
         <aside className="col side">

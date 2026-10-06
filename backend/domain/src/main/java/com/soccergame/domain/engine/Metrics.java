@@ -9,6 +9,8 @@ public final class Metrics {
     public int injuries;
     public int injuryDaysMissed;
     public int trainingSessions;
+    /** 실제로 나머지 공부를 한 날 수 */
+    public int makeupDays;
 
     public Metrics(int weeks) {
         staminaSum = new double[weeks];

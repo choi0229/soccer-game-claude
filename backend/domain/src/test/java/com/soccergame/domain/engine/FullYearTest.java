@@ -17,7 +17,6 @@ class FullYearTest {
         assertThat(s.cup.alive()).hasSize(1);
         assertThat(s.matches.stream().filter(m -> m.competition() == Competition.LEAGUE)).hasSize(14);
         assertThat(s.matches.stream().filter(m -> m.competition() == Competition.CUP).count()).isBetween(1L, 5L);
-        assertThat(s.academicChecks).hasSize(2);
         assertThat(s.league.standings().stream().mapToInt(r -> r.played)).allMatch(p -> p == 14);
     }
 

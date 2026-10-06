@@ -171,30 +171,87 @@ class DayProcessorTest {
     }
 
     @Test
-    void lowAcademicsInJulyTriggersRemedialInSeptember() {
-        GameState s = ENGINE.newGame(8);
-        s.week = ENGINE.calendar().weekIndex(7, 3);
+    void endingWeekBelowThirtyTurnsNextWeekAfternoonsIntoMakeupStudy() {
+        GameState s = plainSemesterMonday(8);
         s.day = Weekday.SUN;
         s.academics = 31;
-        // 학기 주 감소(31 × 6%)가 먼저 적용되어 29.14 → 점검 미달
+        int week = s.week;
+        // 학기 중 감소(31 × 6%) 뒤 29.14 < 30 → 다음 주 나머지 공부
         ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
-        assertThat(s.academicChecks.getFirst().academics()).isCloseTo(31 * 0.94, within(1e-9));
-        s.academics = 20;
-        assertThat(s.remedialWeeks).containsExactly(24, 25);
-        assertThat(s.academicChecks).hasSize(1);
-        assertThat(s.academicChecks.getFirst().failed()).isTrue();
+        assertThat(s.makeupWeeks).containsOnlyKeys(week + 1);
+        assertThat(s.makeupWeeks.get(week + 1)).isCloseTo(31 * 0.94, within(1e-9));
 
         EngineTestSupport.resolveEvents(s);
-        s.week = 24;
-        s.day = Weekday.MON;
+        s.academics = 20;
         double finishing = s.stats.get("finishing");
         double stamina = s.stamina = 60;
         ActionOutcome out = ENGINE.apply(s, new Action.Day(DawnChoice.SLEEP, ClassAttitude.DOZE,
                 Map.of(TrainingSlot.AFTERNOON, "shooting", TrainingSlot.NIGHT, "power")));
-        assertThat(out.log().get(2).text()).startsWith("보충수업");
+        assertThat(out.log()).filteredOn(e -> e.slot().equals("오후")).extracting(LogEntry::text)
+                .singleElement().asString().startsWith("나머지 공부");
         assertThat(s.stats.get("finishing")).isEqualTo(finishing);
-        assertThat(s.academics).isCloseTo(20 - 0.5 + 1, within(1e-9));
-        assertThat(s.stamina).isEqualTo(stamina + 8 + 8 - 6 + 8);
+        assertThat(s.academics).isCloseTo(20 - 0.5 + 2, within(1e-9));
+        // 더 자기 +8, 졸기 +8, 나머지 공부 -4, 야간 -6, 밤 +8
+        assertThat(s.stamina).isEqualTo(stamina + 8 + 8 - 4 - 6 + 8);
+        assertThat(s.metrics.makeupDays).isEqualTo(1);
+    }
+
+    @Test
+    void makeupAppliesInVacationAndWhileInjured() {
+        GameState s = ENGINE.newGame(9);
+        s.week = ENGINE.calendar().weekIndex(8, 2);
+        s.day = Weekday.SUN;
+        s.academics = 25;
+        ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
+        // 방학 주에는 감소가 없지만 25 < 30 이라 다음 주(방학)도 나머지 공부
+        assertThat(s.makeupWeeks).containsEntry(s.week, 25.0);
+        EngineTestSupport.resolveEvents(s);
+        s.injuredUntilDay = s.absoluteDay() + 14;
+        ActionOutcome out = ENGINE.apply(s, Action.Day.keep());
+        assertThat(out.log()).filteredOn(e -> e.slot().equals("오전")).extracting(LogEntry::text)
+                .singleElement().asString().startsWith("재활");
+        assertThat(out.log()).filteredOn(e -> e.slot().equals("오후")).extracting(LogEntry::text)
+                .singleElement().asString().startsWith("나머지 공부");
+    }
+
+    @Test
+    void matchDayAfternoonOverridesMakeup() {
+        GameState s = ENGINE.newGame(10);
+        s.makeupWeeks.put(0, 20.0);
+        ENGINE.apply(s, Action.Day.keep()); // 월: 나머지 공부
+        ENGINE.apply(s, Action.Day.keep()); // 화
+        EngineTestSupport.resolveEvents(s);
+        ActionOutcome wed = ENGINE.apply(s, Action.Day.keep()); // 수: 춘계배 경기
+        assertThat(wed.match()).isNotNull();
+        assertThat(wed.log()).noneMatch(e -> e.text().startsWith("나머지 공부"));
+        assertThat(s.metrics.makeupDays).isEqualTo(2);
+    }
+
+    @Test
+    void noMakeupAfterTheLastWeek() {
+        GameState s = ENGINE.newGame(11);
+        s.week = ENGINE.calendar().weeksPerYear() - 1;
+        s.day = Weekday.SUN;
+        s.academics = 5;
+        ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
+        assertThat(s.makeupWeeks).isEmpty();
+        assertThat(s.finished).isTrue();
+    }
+
+    @Test
+    void sundayLogBreaksDownRecovery() {
+        GameState s = plainSemesterMonday(13);
+        s.day = Weekday.SUN;
+        s.stamina = 20;
+        ActionOutcome out = ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
+        assertThat(out.log()).filteredOn(e -> e.slot().equals("밤")).extracting(LogEntry::text).singleElement()
+                .asString().startsWith("체력 휴식 +25, 밤 회복 +8, 일요일 추가 회복 +20, 합계 +53");
+
+        GameState full = plainSemesterMonday(13);
+        full.day = Weekday.SUN;
+        ActionOutcome capped = ENGINE.apply(full, new Action.Sunday(SundayActivity.PART_TIME, null));
+        assertThat(capped.log()).filteredOn(e -> e.slot().equals("밤")).extracting(LogEntry::text).singleElement()
+                .asString().contains("아르바이트 -10").contains("합계 +18").contains("제한으로 실제");
     }
 
     @Test
@@ -248,17 +305,6 @@ class DayProcessorTest {
             }
         }
         assertThat(fired).isPositive();
-    }
-
-    @Test
-    void decemberCheckHasNoRemedialInsideTheYear() {
-        GameState s = ENGINE.newGame(9);
-        s.week = ENGINE.calendar().weekIndex(12, 4);
-        s.day = Weekday.SUN;
-        s.academics = 10;
-        ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
-        assertThat(s.remedialWeeks).isEmpty();
-        assertThat(s.academicChecks.getFirst().failed()).isTrue();
     }
 
     @Test

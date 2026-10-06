@@ -19,7 +19,7 @@ export interface MatchRecord {
   home: boolean; role: MatchRole; selectionScore: number;
   teamGoals: number; opponentGoals: number; playerGoals: number; playerAssists: number; pressGoals: number;
   ourScore: number; theirScore: number; penaltyWin: boolean | null; result: 'W' | 'D' | 'L';
-  rating: number | null; reputationGained: number; passiveGrowth: string | null;
+  rating: number | null; reputationGained: number; passiveGrowth: string | null; passiveGrowthAmount: number | null;
   scenes: SceneLog[]; timeline: TimelineEntry[];
 }
 
@@ -49,23 +49,24 @@ export interface StatChange {
   startGrade: string; endGrade: string;
 }
 
-export interface AcademicCheck { label: string; academics: number; failed: boolean; remedialWeeks: number }
 
 export interface SeasonSummary {
   stats: StatChange[]; roles: Record<MatchRole, number>; appearances: number; goals: number; assists: number;
   averageRating: number | null; wins: number; draws: number; losses: number; leagueRank: number;
-  cupStages: string[]; cupResult: string; academics: number; academicChecks: AcademicCheck[];
+  cupStages: string[]; cupResult: string; academics: number; makeupWeeks: number; makeupDays: number;
   reputation: number; money: number; injuries: number; exclusions: number; events: number;
 }
 
 export interface GameView {
   runId: string; seed: number; actionCount: number; fingerprint: string; phase: Phase;
-  date: { week: number; month: number; weekOfMonth: number; day: string; dayLabel: string; label: string; term: string; vacation: boolean };
+  date: { week: number; weeksPerYear: number; month: number; weekOfMonth: number; day: string; dayLabel: string; label: string; term: string; vacation: boolean };
   school: { id: number; name: string; typeName: string; strength: number; region: string };
   resources: {
     stamina: number; maxStamina: number; condition: number; conditionName: string; money: number;
     academics: number; reputation: number; affinity: Record<string, number>; schoolLifeMultiplier: number;
     injured: boolean; injuredUntil: string | null; selectionScore: number; expectedRole: string;
+    staminaInfo: { nightRecovery: number; sundayExtraRecovery: number; lowBelow: number; maxFormula: string };
+    academicsInfo: { makeupBelow: number; warningBelow: number; warning: string | null };
   };
   stats: StatView[];
   selections: { dawn: string; classAttitude: string; menus: Record<TrainingSlot, string> };
@@ -82,6 +83,8 @@ export interface GameView {
   matches: MatchRecord[];
   summary: SeasonSummary;
 }
+
+export interface Meta { position: string; archetype: string; weeksPerYear: number; startLabel: string; endLabel: string }
 
 export type ActionRequest =
   | { type: 'DAY'; dawn?: string; classAttitude?: string; menus?: Partial<Record<TrainingSlot, string>> }

@@ -105,3 +105,7 @@ table.league tr.me { background: rgba(31, 111, 235, 0.12); font-weight: 600; }
 tr.clickable { cursor: pointer; }
 tr.clickable:hover { background: var(--bg); }
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.tiny { font-size: 11px; max-width: 260px; }
+.help { color: var(--muted); cursor: help; }
+.warning { margin-top: 8px; padding: 6px 10px; border-radius: 6px; background: #fff3cd; color: #664d03; }
+@media (prefers-color-scheme: dark) { .warning { background: #3b2f00; color: #ffe08a; } }

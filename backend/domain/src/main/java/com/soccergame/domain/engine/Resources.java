@@ -108,8 +108,12 @@ public final class Resources {
     }
 
     public static String signed(double v) {
-        String body = v == Math.rint(v) ? String.valueOf((long) v) : String.format("%.2f", v).replaceAll("0+$", "");
-        return v >= 0 ? "+" + body : body;
+        return v >= 0 ? "+" + plain(v) : plain(v);
+    }
+
+    /** 부호 없이 짧게: 30, 1.5, 0.04 */
+    public static String plain(double v) {
+        return v == Math.rint(v) ? String.valueOf((long) v) : String.format("%.2f", v).replaceAll("0+$", "");
     }
 
     public static double clamp(double v, double min, double max) {

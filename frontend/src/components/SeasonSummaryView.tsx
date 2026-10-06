@@ -24,11 +24,7 @@ export default function SeasonSummaryView({ view }: { view: GameView }) {
           <h3>학업과 평판</h3>
           <ul>
             <li>학업 성취 {f1(s.academics)}</li>
-            {s.academicChecks.map((c) => (
-              <li key={c.label}>
-                {c.label}: {f1(c.academics)} {c.failed ? (c.remedialWeeks > 0 ? `→ 보충수업 ${c.remedialWeeks}주` : '→ 미달 (다음 학년 적용)') : '→ 통과'}
-              </li>
-            ))}
+            <li>나머지 공부 {s.makeupWeeks}주 (실제 {s.makeupDays}일)</li>
             <li>평판 {f1(s.reputation)} · 돈 {won(s.money)}</li>
             <li>부상 {s.injuries}회 · 훈련 제외 {s.exclusions}회 · 이벤트 {s.events}편</li>
           </ul>

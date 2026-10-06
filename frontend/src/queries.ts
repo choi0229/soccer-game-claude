@@ -12,6 +12,10 @@ export interface RecentOutcome {
   outcome: ActionOutcome;
 }
 
+export function useMeta() {
+  return useQuery({ queryKey: ['meta'], queryFn: api.meta, staleTime: Infinity });
+}
+
 export function useRun(runId: string | null) {
   return useQuery({
     queryKey: runKey(runId ?? ''),

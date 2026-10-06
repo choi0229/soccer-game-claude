@@ -129,11 +129,12 @@ public record Rules(
     public record ConditionLevel(String name, double training, double match) {
     }
 
-    public record AcademicsRules(double start, double min, double max, double remedialGain,
-                                 double semesterWeeklyRate, List<AcademicCheck> checks) {
+    public record AcademicsRules(double start, double min, double max, double semesterWeeklyRate, Makeup makeup,
+                                 double warningBelow) {
     }
 
-    public record AcademicCheck(WeekRef at, double below, List<WeekRef> remedialWeeks) {
+    /** 나머지 공부: 한 주를 below 미만으로 마치면 다음 주 오후 팀 훈련 대신 */
+    public record Makeup(double below, double academics, double stamina) {
     }
 
     public record RelationshipRules(double min, double max, AffinityStart start) {

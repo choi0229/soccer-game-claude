@@ -54,7 +54,7 @@ public class ViewMapper {
         int week = Math.min(s.week, calendar.weeksPerYear() - 1);
         Weekday day = s.finished ? Weekday.SUN : s.day;
         String term = calendar.vacation(week).orElse("학기 중");
-        return new DateView(week + 1, calendar.month(week), calendar.weekOfMonth(week), day.name(), day.label(),
+        return new DateView(week + 1, calendar.weeksPerYear(), calendar.month(week), calendar.weekOfMonth(week), day.name(), day.label(),
                 s.finished ? "시즌 종료" : calendar.label(week, day), term, calendar.isVacation(week));
     }
 
@@ -78,7 +78,30 @@ public class ViewMapper {
         return new ResourcesView(s.stamina, engine.resources().maxStamina(s), s.condition,
                 engine.resources().conditionLevel(s).name(), s.money, s.academics, s.reputation, affinity,
                 engine.resources().schoolLifeMultiplier(s), s.isInjured(), injuredUntil, score,
-                matchEngine.role(score, s.playerSchool().strength(), s.isInjured()).label());
+                matchEngine.role(score, s.playerSchool().strength(), s.isInjured()).label(), staminaInfo(s),
+                academicsInfo(s));
+    }
+
+    private StaminaInfo staminaInfo(GameState s) {
+        Rules.DailyRules daily = config.rules().daily();
+        Rules.StaminaRules st = config.rules().stamina();
+        int week = Math.min(s.week, calendar.weeksPerYear() - 1);
+        double night = calendar.isVacation(week) ? daily.vacationNightRecovery() : daily.nightRecovery();
+        double fitness = s.stats.get(GameConfig.FITNESS);
+        String formula = "최대 체력 = " + plain(st.maxBase()) + " + (기초체력 " + String.format("%.1f", fitness) + " − "
+                + plain(st.fitnessPivot()) + ") ÷ " + plain(st.fitnessDivisor()) + " = "
+                + String.format("%.1f", engine.resources().maxStamina(s)) + ". 기초체력이 오르면 최대 체력도 오릅니다.";
+        return new StaminaInfo(night, daily.sundayExtraRecovery(), st.injuryRiskBelow(), formula);
+    }
+
+    private AcademicsInfo academicsInfo(GameState s) {
+        Rules.AcademicsRules a = config.rules().academics();
+        String warning = null;
+        if (s.academics < a.warningBelow()) {
+            warning = "학업 성취 " + String.format("%.1f", s.academics) + ": 한 주를 " + plain(a.makeup().below())
+                    + " 미만으로 마치면 다음 주 월~금 오후 팀 훈련이 나머지 공부로 바뀝니다.";
+        }
+        return new AcademicsInfo(a.makeup().below(), a.warningBelow(), warning);
     }
 
     private List<StatView> stats(GameState s) {
@@ -106,7 +129,7 @@ public class ViewMapper {
         boolean vacation = calendar.isVacation(s.week);
         boolean injured = s.isInjured();
         boolean match = engine.playerMatchToday(s);
-        boolean remedial = s.remedialWeeks.contains(s.week);
+        Double makeupReason = s.makeupWeeks.get(s.week);
         List<SlotView> slots = new ArrayList<>();
         slots.add(new SlotView("DAWN", "새벽", "DAWN", "새벽 선택", null,
                 injured ? "부상 중에는 개인 운동을 할 수 없어 더 자기로 처리됩니다" : null));
@@ -122,8 +145,11 @@ public class ViewMapper {
             slots.add(fixed("NIGHT", "야간", label, null));
             return slots;
         }
-        if (remedial) {
-            slots.add(fixed("AFTERNOON", "오후", "보충수업", "학업 성취 미달로 팀 훈련 대신 보충수업"));
+        if (makeupReason != null) {
+            Rules.Makeup m = config.rules().academics().makeup();
+            slots.add(fixed("AFTERNOON", "오후", "나머지 공부", "지난주를 학업 성취 " + String.format("%.1f", makeupReason)
+                    + "로 마쳐 (" + plain(m.below()) + " 미만) 이번 주 오후 팀 훈련 대신 나머지 공부: 학업 "
+                    + signed(m.academics()) + ", 체력 " + signed(m.stamina()) + ", 성장 없음"));
         } else if (injured) {
             slots.add(fixed("AFTERNOON", "오후", "재활", "부상 중"));
         } else {
@@ -230,5 +256,9 @@ public class ViewMapper {
 
     private static String signed(double v) {
         return com.soccergame.domain.engine.Resources.signed(v);
+    }
+
+    private static String plain(double v) {
+        return com.soccergame.domain.engine.Resources.plain(v);
     }
 }
