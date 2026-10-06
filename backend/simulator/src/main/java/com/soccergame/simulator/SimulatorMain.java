@@ -61,7 +61,8 @@ public final class SimulatorMain {
     /** 학교 유형 5종 × (훈련 위주, 균형) */
     static String bySchoolType(GameConfig config, int runs, long seedStart) {
         long started = System.nanoTime();
-        List<Strategy> strategies = List.of(new Strategies.TrainingFocus(), new Strategies.Balanced());
+        List<Strategy> strategies = List.of(new Strategies.TrainingFocus(), new Strategies.Balanced(),
+                new Strategies.AcademicNeglect());
         List<ReportPrinter.SchoolTypeRow> rows = new ArrayList<>();
         for (var type : config.schools().types()) {
             GameConfig typed = config.withPlayerSchoolType(type.key());

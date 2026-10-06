@@ -176,9 +176,9 @@ class DayProcessorTest {
         s.week = ENGINE.calendar().weekIndex(7, 3);
         s.day = Weekday.SUN;
         s.academics = 31;
-        // 학기 주 감소(-2)가 먼저 적용되어 29 → 점검 미달
+        // 학기 주 감소(31 × 6%)가 먼저 적용되어 29.14 → 점검 미달
         ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
-        assertThat(s.academicChecks.getFirst().academics()).isEqualTo(29);
+        assertThat(s.academicChecks.getFirst().academics()).isCloseTo(31 * 0.94, within(1e-9));
         s.academics = 20;
         assertThat(s.remedialWeeks).containsExactly(24, 25);
         assertThat(s.academicChecks).hasSize(1);
@@ -203,7 +203,12 @@ class DayProcessorTest {
         s.day = Weekday.SUN;
         s.academics = 50;
         ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
-        assertThat(s.academics).isEqualTo(48);
+        assertThat(s.academics).isCloseTo(47, within(1e-9));
+        GameState t = plainSemesterMonday(11);
+        t.day = Weekday.SUN;
+        t.academics = 80;
+        ENGINE.apply(t, new Action.Sunday(SundayActivity.REST, null));
+        assertThat(t.academics).isCloseTo(80 * 0.94, within(1e-9));
 
         GameState v = ENGINE.newGame(11);
         v.week = ENGINE.calendar().weekIndex(8, 2);
@@ -211,6 +216,22 @@ class DayProcessorTest {
         v.academics = 50;
         ENGINE.apply(v, new Action.Sunday(SundayActivity.REST, null));
         assertThat(v.academics).isEqualTo(50);
+    }
+
+    @Test
+    void vacationNightRecoveryIsTwelve() {
+        GameState s = ENGINE.newGame(12);
+        s.week = ENGINE.calendar().weekIndex(8, 1);
+        s.stamina = 60;
+        // 더 자기 +8, 오전·오후 팀 훈련 -8 -8, 야간 -6, 방학 밤 회복 +12
+        ENGINE.apply(s, new Action.Day(DawnChoice.SLEEP, null, null));
+        assertThat(s.stamina).isCloseTo(60 + 8 - 8 - 8 - 6 + 12, within(1e-9));
+
+        s.day = Weekday.SUN;
+        s.stamina = 20;
+        ENGINE.apply(s, new Action.Sunday(SundayActivity.PART_TIME, null));
+        // 아르바이트 -10, 방학 밤 회복 +12, 일요일 추가 +20
+        assertThat(s.stamina).isCloseTo(20 - 10 + 12 + 20, within(1e-9));
     }
 
     @Test

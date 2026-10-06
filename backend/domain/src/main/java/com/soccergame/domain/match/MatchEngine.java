@@ -46,10 +46,10 @@ public final class MatchEngine {
             return MatchRole.ABSENT;
         }
         Rules.Selection sel = rules.selection();
-        if (selectionScore >= teamStrength + sel.starterMargin()) {
+        if (selectionScore >= teamStrength * sel.starterRatio()) {
             return MatchRole.STARTER;
         }
-        if (selectionScore >= teamStrength + sel.subMargin()) {
+        if (selectionScore >= teamStrength * sel.subRatio()) {
             return MatchRole.SUB;
         }
         return MatchRole.BENCH;
@@ -82,7 +82,7 @@ public final class MatchEngine {
     /** 플레이어 장면까지 포함한 경기 결과 (적용 전) */
     public record Result(int teamGoals, int opponentGoals, int playerGoals, int playerAssists, int pressGoals,
                          int ourScore, int theirScore, Boolean penaltyWin, List<SceneLog> scenes,
-                         List<TimelineEntry> timeline, int successes, int failures) {
+                         List<TimelineEntry> timeline, int successes, int failures, int goalFailures) {
         public String outcome() {
             return ourScore > theirScore ? "W" : ourScore < theirScore ? "L" : "D";
         }
@@ -116,6 +116,7 @@ public final class MatchEngine {
         int pressGoals = 0;
         int successes = 0;
         int failures = 0;
+        int goalFailures = 0;
         Boolean previous = null;
         boolean takeOnPending = false;
         for (int i = 0; i < picked.size(); i++) {
@@ -186,6 +187,9 @@ public final class MatchEngine {
                     }
                 } else {
                     failures++;
+                    if (scene.isGoalScene()) {
+                        goalFailures++;
+                    }
                     result = "FAIL";
                 }
                 previous = success;
@@ -201,7 +205,7 @@ public final class MatchEngine {
         }
         List<TimelineEntry> timeline = timeline(ourMinutes, theirMinutes, logs, penaltyWin);
         return new Result(teamGoals, oppGoals, playerGoals, assists, pressGoals, ourScore, oppGoals, penaltyWin,
-                logs, timeline, successes, failures);
+                logs, timeline, successes, failures, goalFailures);
     }
 
     /**
@@ -237,7 +241,8 @@ public final class MatchEngine {
         Rules.RatingRules rr = rules.rating();
         int other = r.successes() - r.playerGoals() - r.playerAssists();
         double v = rr.base() + r.playerGoals() * rr.goal() + r.playerAssists() * rr.assist()
-                + other * rr.otherSuccess() + r.failures() * rr.failure();
+                + other * rr.otherSuccess() + r.goalFailures() * rr.goalFailure()
+                + (r.failures() - r.goalFailures()) * rr.failure();
         return round1(clamp(v, rr.min(), rr.max()));
     }
 

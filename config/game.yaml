@@ -91,6 +91,8 @@ daily:
   # 학교생활 배율 = base + 학교생활 관계도 / divisor
   schoolLifeMultiplier: { base: 1.0, divisor: 200 }
   nightRecovery: 8
+  # 방학 주의 밤 회복 (일요일 추가 회복은 이 값에 더한다)
+  vacationNightRecovery: 12
   sundayExtraRecovery: 20
   sunday:
     rest: { stamina: 25, condition: 1 }
@@ -123,8 +125,8 @@ academics:
   min: 0
   max: 100
   remedialGain: 1
-  # 학기 중인 주가 끝날 때마다(일요일 처리 끝) 더하는 값. 방학 주에는 적용하지 않는다.
-  semesterWeeklyChange: -2
+  # 학기 중인 주가 끝날 때마다(일요일 처리 끝) 현재 학업 성취 × 이 비율만큼 더한다. 방학 주에는 적용하지 않는다.
+  semesterWeeklyRate: -0.06
   checks:
     - { at: { month: 7, week: 3 }, below: 30, remedialWeeks: [ { month: 9, week: 1 }, { month: 9, week: 2 } ] }
     # 다음 학기(2학년 3월)는 1년 범위 밖이므로 점검 결과만 기록한다
@@ -146,8 +148,9 @@ match:
     coachWeight: 0.3
     statWeight: 0.7
     topStatCount: 6
-    starterMargin: -5
-    subMargin: -20
+    # 선발 = 출전 점수 ≥ 팀 전력 × starterRatio, 교체 = ≥ 팀 전력 × subRatio, 그 밖은 벤치
+    starterRatio: 0.85
+    subRatio: 0.60
   teamGoals: { base: 1.2, perStrength: 0.03, min: 0.2, max: 3.5 }
   sceneCount:
     starter: { min: 4, max: 5 }
@@ -173,7 +176,8 @@ match:
   takeOnBonus: 15
   pressingGoalChance: 0.3
   penaltyWinChance: 0.5
-  rating: { base: 6.0, goal: 1.0, assist: 0.7, otherSuccess: 0.3, failure: -0.2, min: 3.0, max: 10.0 }
+  # goalFailure: 골이 되는 장면의 실패, failure: 그 밖의 장면 실패
+  rating: { base: 6.0, goal: 1.0, assist: 0.7, otherSuccess: 0.3, goalFailure: -0.1, failure: -0.2, min: 3.0, max: 10.0 }
   coachFeedback: { goodFrom: 7.0, goodDelta: 2, badBelow: 5.5, badDelta: -2 }
   points: { win: 3, draw: 1, loss: 0 }
 

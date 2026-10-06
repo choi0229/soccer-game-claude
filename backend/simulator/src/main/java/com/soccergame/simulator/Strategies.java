@@ -22,7 +22,7 @@ public final class Strategies {
     }
 
     public static List<Strategy> all() {
-        return List.of(new RandomStrategy(), new TrainingFocus(), new Balanced());
+        return List.of(new RandomStrategy(), new TrainingFocus(), new Balanced(), new AcademicNeglect());
     }
 
     private static Map<TrainingSlot, String> allSlots(String menuId) {
@@ -69,16 +69,20 @@ public final class Strategies {
      * 훈련 위주: 새벽은 체력 50 이상이면 개인 운동, 아니면 더 자기.
      * 수업은 학업 성취 40 미만이면 집중, 아니면 졸기. 메뉴는 파워와 제공권을 날마다 번갈아 전 칸에. 일요일은 휴식.
      */
-    static final class TrainingFocus implements Strategy {
+    static class TrainingFocus implements Strategy {
         @Override
         public String name() {
             return "훈련 위주";
         }
 
+        ClassAttitude classAttitude(GameState s) {
+            return s.academics < 40 ? ClassAttitude.FOCUS : ClassAttitude.DOZE;
+        }
+
         @Override
         public Action.Day day(GameState s, GameEngine engine, Rng choice) {
             DawnChoice dawn = s.stamina >= 50 ? DawnChoice.EXERCISE : DawnChoice.SLEEP;
-            ClassAttitude attitude = s.academics < 40 ? ClassAttitude.FOCUS : ClassAttitude.DOZE;
+            ClassAttitude attitude = classAttitude(s);
             String menu = weekdayIndex(s) % 2 == 0 ? "power" : "aerial";
             return new Action.Day(dawn, attitude, allSlots(menu));
         }
@@ -86,6 +90,19 @@ public final class Strategies {
         @Override
         public Action.Sunday sunday(GameState s, GameEngine engine, Rng choice) {
             return new Action.Sunday(SundayActivity.REST, null);
+        }
+    }
+
+    /** 학업 방치: 훈련 위주와 같지만 수업은 항상 졸기 */
+    static final class AcademicNeglect extends TrainingFocus {
+        @Override
+        public String name() {
+            return "학업 방치";
+        }
+
+        @Override
+        ClassAttitude classAttitude(GameState s) {
+            return ClassAttitude.DOZE;
         }
     }
 

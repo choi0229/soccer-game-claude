@@ -84,6 +84,7 @@ public record Rules(
 
     public record DailyRules(DawnChoice defaultDawn, ClassAttitude defaultClassAttitude, Dawn dawn, Map<ClassAttitude, ClassAttitudeRule> classAttitudes,
                              SchoolLifeMultiplier schoolLifeMultiplier, double nightRecovery,
+                             double vacationNightRecovery,
                              double sundayExtraRecovery, SundayRules sunday) {
     }
 
@@ -129,7 +130,7 @@ public record Rules(
     }
 
     public record AcademicsRules(double start, double min, double max, double remedialGain,
-                                 double semesterWeeklyChange, List<AcademicCheck> checks) {
+                                 double semesterWeeklyRate, List<AcademicCheck> checks) {
     }
 
     public record AcademicCheck(WeekRef at, double below, List<WeekRef> remedialWeeks) {
@@ -171,8 +172,8 @@ public record Rules(
         }
     }
 
-    public record Selection(double coachWeight, double statWeight, int topStatCount, double starterMargin,
-                            double subMargin) {
+    public record Selection(double coachWeight, double statWeight, int topStatCount, double starterRatio,
+                            double subRatio) {
     }
 
     public record TeamGoals(double base, double perStrength, double min, double max) {
@@ -186,7 +187,8 @@ public record Rules(
                                double growthPerMatch) {
     }
 
-    public record RatingRules(double base, double goal, double assist, double otherSuccess, double failure,
+    public record RatingRules(double base, double goal, double assist, double otherSuccess, double goalFailure,
+                              double failure,
                               double min, double max) {
     }
 

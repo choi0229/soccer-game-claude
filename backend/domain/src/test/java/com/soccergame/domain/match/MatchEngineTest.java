@@ -33,11 +33,17 @@ class MatchEngineTest {
         double score = engine.selectionScore(30, s);
         // 30 × 0.3 + 27.5 × 0.7
         assertThat(score).isCloseTo(28.25, within(1e-9));
+        // 전력 40: 선발 ≥ 34 (×0.85), 교체 ≥ 24 (×0.60)
         assertThat(engine.role(score, 40, false)).isEqualTo(MatchRole.SUB);
-        assertThat(engine.role(35, 40, false)).isEqualTo(MatchRole.STARTER);
-        assertThat(engine.role(34.99, 40, false)).isEqualTo(MatchRole.SUB);
-        assertThat(engine.role(20, 40, false)).isEqualTo(MatchRole.SUB);
-        assertThat(engine.role(19.99, 40, false)).isEqualTo(MatchRole.BENCH);
+        assertThat(engine.role(34, 40, false)).isEqualTo(MatchRole.STARTER);
+        assertThat(engine.role(33.99, 40, false)).isEqualTo(MatchRole.SUB);
+        assertThat(engine.role(24, 40, false)).isEqualTo(MatchRole.SUB);
+        assertThat(engine.role(23.99, 40, false)).isEqualTo(MatchRole.BENCH);
+        // 전력 80: 선발 ≥ 68, 교체 ≥ 48
+        assertThat(engine.role(68, 80, false)).isEqualTo(MatchRole.STARTER);
+        assertThat(engine.role(67.9, 80, false)).isEqualTo(MatchRole.SUB);
+        assertThat(engine.role(48, 80, false)).isEqualTo(MatchRole.SUB);
+        assertThat(engine.role(47.9, 80, false)).isEqualTo(MatchRole.BENCH);
         assertThat(engine.role(100, 40, true)).isEqualTo(MatchRole.ABSENT);
     }
 
@@ -188,12 +194,15 @@ class MatchEngineTest {
 
     @Test
     void ratingFormula() {
-        // 골 1, 도움 1, 그 밖 성공 1, 실패 2 → 6 + 1 + 0.7 + 0.3 - 0.4 = 7.6
-        MatchEngine.Result r = new MatchEngine.Result(0, 0, 1, 1, 0, 2, 0, null, List.of(), List.of(), 3, 2);
-        assertThat(engine.rating(r)).isEqualTo(7.6);
-        MatchEngine.Result bad = new MatchEngine.Result(0, 0, 0, 0, 0, 0, 0, null, List.of(), List.of(), 0, 20);
+        // 골 1, 도움 1, 그 밖 성공 1, 골 장면 실패 1, 그 밖 실패 1 → 6 + 1 + 0.7 + 0.3 - 0.1 - 0.2 = 7.7
+        MatchEngine.Result r = new MatchEngine.Result(0, 0, 1, 1, 0, 2, 0, null, List.of(), List.of(), 3, 2, 1);
+        assertThat(engine.rating(r)).isEqualTo(7.7);
+        // 골 장면 실패 5개 → 6 - 0.5
+        MatchEngine.Result misses = new MatchEngine.Result(0, 0, 0, 0, 0, 0, 0, null, List.of(), List.of(), 0, 5, 5);
+        assertThat(engine.rating(misses)).isEqualTo(5.5);
+        MatchEngine.Result bad = new MatchEngine.Result(0, 0, 0, 0, 0, 0, 0, null, List.of(), List.of(), 0, 20, 0);
         assertThat(engine.rating(bad)).isEqualTo(3.0);
-        MatchEngine.Result great = new MatchEngine.Result(0, 0, 6, 0, 0, 6, 0, null, List.of(), List.of(), 6, 0);
+        MatchEngine.Result great = new MatchEngine.Result(0, 0, 6, 0, 0, 6, 0, null, List.of(), List.of(), 6, 0, 0);
         assertThat(engine.rating(great)).isEqualTo(10.0);
     }
 

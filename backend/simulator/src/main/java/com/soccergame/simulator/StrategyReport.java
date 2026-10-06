@@ -46,6 +46,7 @@ public final class StrategyReport {
     final int[] leagueRank = new int[9];
     final Map<String, Integer> cupBest = new LinkedHashMap<>();
     final List<Double> starterFirstWeek = new ArrayList<>();
+    final List<Double> subFirstWeek = new ArrayList<>();
     final List<Double> coachAffinity = new ArrayList<>();
     final List<Double> money = new ArrayList<>();
     final List<Double> eventsPerRun = new ArrayList<>();
@@ -88,6 +89,7 @@ public final class StrategyReport {
         int g = 0;
         int a = 0;
         int firstStarter = -1;
+        int firstSub = -1;
         for (MatchRecord m : s.matches) {
             matches++;
             roles.merge(m.role(), 1, Integer::sum);
@@ -102,6 +104,9 @@ public final class StrategyReport {
             if (m.role() == MatchRole.STARTER && firstStarter < 0) {
                 firstStarter = m.week() + 1;
             }
+            if (m.role() == MatchRole.SUB && firstSub < 0) {
+                firstSub = m.week() + 1;
+            }
             g += m.playerGoals();
             a += m.playerAssists();
             pressGoals += m.pressGoals();
@@ -110,7 +115,8 @@ public final class StrategyReport {
         assists += a;
         seasonGoals.add((double) g);
         seasonAssists.add((double) a);
-        starterFirstWeek.add((double) (firstStarter < 0 ? 99 : firstStarter));
+        starterFirstWeek.add((double) (firstStarter < 0 ? NEVER : firstStarter));
+        subFirstWeek.add((double) (firstSub < 0 ? NEVER : firstSub));
         reputation.add(s.reputation);
         leagueRank[s.league.rankOf(s.playerSchoolId)]++;
         String best = s.cupStagesReached.isEmpty() ? "8강 전 탈락" : s.cupStagesReached.getLast();
@@ -123,6 +129,9 @@ public final class StrategyReport {
         eventsPerRun.add((double) s.eventHistory.size());
         s.eventHistory.forEach(id -> eventCounts.merge(id, 1, Integer::sum));
     }
+
+    /** 1년 동안 한 번도 없었음을 나타내는 주차 */
+    static final int NEVER = 99;
 
     static double[] arr(List<Double> list) {
         return list.stream().mapToDouble(Double::doubleValue).toArray();

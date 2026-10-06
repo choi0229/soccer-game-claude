@@ -132,8 +132,10 @@ public final class ReportPrinter {
     public String renderSchoolTypes(List<SchoolTypeRow> rows, int runs) {
         out.setLength(0);
         section("7. 학교 유형별 출전과 리그 순위 (조합마다 " + runs + "판)");
-        line("| 학교 유형 (전력) | 전략 | 선발 | 교체 | 벤치 | 부상 결장 | 평균 평점 | 평균 순위 | 1위 | 1~4위 | 8위 |");
-        line("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
+        line("주차 열: 1년 중 처음으로 그 역할로 출전한 주차의 중앙값 (괄호는 1년 내내 한 번도 없던 판의 비율)");
+        line("");
+        line("| 학교 유형 (전력) | 전략 | 선발 | 교체 | 벤치 | 부상 결장 | 첫 교체 출전 주차 | 첫 선발 주차 | 평균 평점 | 평균 순위 | 1위 | 1~4위 | 8위 |");
+        line("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
         for (SchoolTypeRow row : rows) {
             StrategyReport r = row.report();
             double rankSum = 0;
@@ -149,6 +151,8 @@ public final class ReportPrinter {
                     + pct(r.roles.get(MatchRole.SUB), r.matches) + " | "
                     + pct(r.roles.get(MatchRole.BENCH), r.matches) + " | "
                     + pct(r.roles.get(MatchRole.ABSENT), r.matches) + " | "
+                    + firstWeek(r.subFirstWeek) + " | "
+                    + firstWeek(r.starterFirstWeek) + " | "
                     + (r.appearances == 0 ? "- (출전 없음)" : f2(r.ratingSum / r.appearances)) + " | "
                     + f2(rankSum / r.runs) + " | "
                     + pct(r.leagueRank[1], r.runs) + " | "
@@ -157,6 +161,13 @@ public final class ReportPrinter {
         }
         line("");
         return out.toString();
+    }
+
+    private static String firstWeek(List<Double> weeks) {
+        Distribution d = Distribution.of(StrategyReport.arr(weeks));
+        long never = weeks.stream().filter(w -> w >= StrategyReport.NEVER).count();
+        String median = d.p50() >= StrategyReport.NEVER ? "없음" : f0(d.p50()) + "주";
+        return median + " (" + pct((int) never, weeks.size()) + ")";
     }
 
     private static String f0(double v) {

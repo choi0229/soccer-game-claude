@@ -89,7 +89,7 @@ final class DayProcessor {
             }
             trainingSlot(s, log, NIGHT, Kind.PERSONAL, TrainingSlot.NIGHT);
         }
-        endOfDay(s, log, rules.daily().nightRecovery());
+        endOfDay(s, log, nightRecovery(s));
         return new ActionOutcome(date, log, match, newEvents);
     }
 
@@ -227,7 +227,7 @@ final class DayProcessor {
             resources.condition(s, -1);
             log.add(new LogEntry("토요일", "체력이 떨어진 채 한 주를 마쳐 컨디션이 한 단계 내려갔다."));
         }
-        endOfDay(s, log, rules.daily().nightRecovery());
+        endOfDay(s, log, nightRecovery(s));
         return new ActionOutcome(date, log, match, List.of());
     }
 
@@ -262,12 +262,17 @@ final class DayProcessor {
         if (s.rng.chance(rules.events().sundayChance())) {
             events.trigger(s, null, "SUNDAY").ifPresent(e -> newEvents.add(e.id()));
         }
-        endOfDay(s, log, rules.daily().nightRecovery() + rules.daily().sundayExtraRecovery());
+        endOfDay(s, log, nightRecovery(s) + rules.daily().sundayExtraRecovery());
         endOfWeek(s, log);
         return new ActionOutcome(date, log, null, newEvents);
     }
 
     // ---------------- 공통 ----------------
+
+    /** 방학 주와 학기 중의 밤 회복량이 다르다 */
+    private double nightRecovery(GameState s) {
+        return calendar.isVacation(s.week) ? rules.daily().vacationNightRecovery() : rules.daily().nightRecovery();
+    }
 
     private void endOfDay(GameState s, List<LogEntry> log, double recovery) {
         s.metrics.staminaSum[s.week] += s.stamina;
@@ -281,10 +286,11 @@ final class DayProcessor {
 
     /** 일요일이 끝나면 학기 중 학업 감소, 학업 점검을 하고 다음 주 월요일로 넘어간다. */
     private void endOfWeek(GameState s, List<LogEntry> log) {
-        double weekly = rules.academics().semesterWeeklyChange();
-        if (weekly != 0 && !calendar.isVacation(s.week)) {
+        double rate = rules.academics().semesterWeeklyRate();
+        if (rate != 0 && !calendar.isVacation(s.week)) {
+            double weekly = s.academics * rate;
             resources.academics(s, weekly);
-            log.add(new LogEntry("학업", "학기 중 한 주가 지나 학업 성취 " + Resources.signed(weekly)
+            log.add(new LogEntry("학업", "학기 중 한 주가 지나 학업 성취 " + Resources.signed(round2(weekly))
                     + " (현재 " + Math.round(s.academics) + ")"));
         }
         for (Rules.AcademicCheck check : rules.academics().checks()) {
