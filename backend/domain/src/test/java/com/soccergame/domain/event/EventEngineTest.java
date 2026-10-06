@@ -7,6 +7,7 @@ import com.soccergame.domain.config.Events;
 import com.soccergame.domain.config.Events.EventDef;
 import com.soccergame.domain.config.GameConfig;
 import com.soccergame.domain.engine.Action;
+import com.soccergame.domain.engine.ActionOutcome;
 import com.soccergame.domain.engine.GameEngine;
 import com.soccergame.domain.engine.GameState;
 import com.soccergame.domain.engine.InvalidActionException;
@@ -77,7 +78,7 @@ class EventEngineTest {
         assertThat(eligible(s, "coach_008")).isFalse();
         s.week = engine.calendar().weekIndex(8, 1);
         assertThat(eligible(s, "coach_008")).isTrue();
-        assertThat(eligible(s, "school_001")).isFalse();
+        assertThat(eligible(s, "friend_001")).isFalse();
         // 부상
         assertThat(eligible(s, "coach_007")).isFalse();
         s.injuredUntilDay = s.absoluteDay() + 7;
@@ -183,25 +184,81 @@ class EventEngineTest {
     }
 
     @Test
-    void classTeacherOrFriendsTriggersSchoolEventAboutFifteenPercent() {
+    void classFriendsTriggersFriendEventAboutFifteenPercent() {
         int fired = 0;
         int n = 2000;
         for (long seed = 0; seed < n; seed++) {
             GameState s = semester(seed);
-            engine.apply(s, new Action.Day(DawnChoice.SLEEP, seed % 2 == 0 ? ClassAttitude.TEACHER : ClassAttitude.FRIENDS, Map.of()));
+            engine.apply(s, new Action.Day(DawnChoice.SLEEP, ClassAttitude.FRIENDS, Map.of()));
             if (!s.pendingEvents.isEmpty()) {
                 fired++;
-                assertThat(def(s.pendingEvents.peekFirst().eventId()).axis()).isEqualTo(Axis.SCHOOL);
+                assertThat(def(s.pendingEvents.peekFirst().eventId()).axis()).isEqualTo(Axis.FRIEND);
                 assertThat(s.pendingEvents.peekFirst().source()).isEqualTo("CLASS");
             }
         }
         assertThat((double) fired / n).isBetween(0.12, 0.18);
-        // 집중·졸기는 수업 이벤트가 없다
+        // 집중·졸기·선생님께 질문은 수업 이벤트가 없다
         GameState s = semester(1);
-        for (int i = 0; i < 5; i++) {
-            engine.apply(s, new Action.Day(null, ClassAttitude.FOCUS, Map.of()));
+        for (ClassAttitude a : List.of(ClassAttitude.FOCUS, ClassAttitude.DOZE, ClassAttitude.QUESTION)) {
+            engine.apply(s, new Action.Day(null, a, Map.of()));
         }
         assertThat(s.eventHistory).isEmpty();
+    }
+
+    @Test
+    void questionAttitudeGivesAcademicsOnly() {
+        GameState s = semester(2);
+        double friend = s.affinity.get(Axis.FRIEND);
+        engine.apply(s, new Action.Day(DawnChoice.SLEEP, ClassAttitude.QUESTION, Map.of()));
+        assertThat(s.academics).isEqualTo(51.0);
+        assertThat(s.affinity.get(Axis.FRIEND)).isEqualTo(friend);
+    }
+
+    @Test
+    void introductionUnlocksGirlfriendOnlyWithContactChoice() {
+        GameState s = semester(3);
+        assertThat(eligible(s, "friend_007")).isFalse();
+        assertThat(eligible(s, "girlfriend_002")).isFalse();
+        s.affinity.put(Axis.FRIEND, 40.0);
+        assertThat(eligible(s, "friend_007")).isTrue();
+
+        GameState declined = semester(3);
+        declined.affinity.put(Axis.FRIEND, 40.0);
+        queue(declined, "friend_007");
+        engine.apply(declined, new Action.EventChoice("friend_007", 1));
+        assertThat(declined.affinity).doesNotContainKey(Axis.GIRLFRIEND);
+        assertThat(declined.traitScores).containsEntry("hardWorker", 1);
+
+        queue(s, "friend_007");
+        ActionOutcome out = engine.apply(s, new Action.EventChoice("friend_007", 0));
+        assertThat(s.affinity).containsEntry(Axis.GIRLFRIEND, 30.0);
+        assertThat(s.axisUnlockedWeek).containsEntry(Axis.GIRLFRIEND, s.week);
+        assertThat(out.log()).anyMatch(e -> e.slot().equals("알림") && e.text().contains("여자친구 축이 열렸다"));
+        assertThat(eligible(s, "girlfriend_002")).isTrue();
+        // 열린 뒤에는 여자친구를 만날 수 있고, 그 축 이벤트가 나온다
+        s.day = Weekday.SUN;
+        engine.apply(s, new Action.Sunday(SundayActivity.MEET, Axis.GIRLFRIEND));
+        assertThat(s.affinity.get(Axis.GIRLFRIEND)).isGreaterThanOrEqualTo(30.0 + 5 - 4);
+        assertThat(def(s.pendingEvents.peekFirst().eventId()).axis()).isEqualTo(Axis.GIRLFRIEND);
+    }
+
+    @Test
+    void choosingTraitChoiceRaisesScore() {
+        GameState s = semester(4);
+        s.week = 0;
+        events.trigger(s, Axis.COACH, "MEET");
+        engine.apply(s, new Action.EventChoice("coach_001", 0));
+        assertThat(s.traitScores).containsEntry("competitor", 1);
+        GameState t = semester(4);
+        t.week = 0;
+        events.trigger(t, Axis.COACH, "MEET");
+        engine.apply(t, new Action.EventChoice("coach_001", 2));
+        assertThat(t.traitScores.values()).allMatch(v -> v == 0);
+    }
+
+    /** 이벤트를 대기열 맨 앞에 직접 넣는다 */
+    private void queue(GameState s, String id) {
+        s.pendingEvents.addFirst(new com.soccergame.domain.engine.PendingEvent(id, "TEST"));
     }
 
     @Test
@@ -217,7 +274,9 @@ class EventEngineTest {
         assertThat(all).anyMatch(f -> f.coachAffinity() != null);
         assertThat(all).anyMatch(f -> f.teammateAffinity() != null);
         assertThat(all).anyMatch(f -> f.familyAffinity() != null);
-        assertThat(all).anyMatch(f -> f.schoolAffinity() != null);
+        assertThat(all).anyMatch(f -> f.friendAffinity() != null);
+        assertThat(all).anyMatch(f -> f.girlfriendAffinity() != null);
+        assertThat(all).anyMatch(f -> f.unlockAxis() == Axis.GIRLFRIEND);
         assertThat(all).anyMatch(f -> f.reputation() != null);
     }
 }

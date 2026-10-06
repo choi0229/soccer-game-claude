@@ -75,6 +75,8 @@ training:
     - { below: 60, factor: 1.0 }
     - { below: 80, factor: 0.7 }
     - { below: 1000, factor: 0.4 }
+  # 특성 보너스 + 인연 보너스 합계의 상한. 성장량 = ... × (1 + min(합계, bonusCap))
+  bonusCap: 0.30
 
 daily:
   # 판 시작 시 새벽·오전 수업 기본 선택
@@ -84,12 +86,12 @@ daily:
     exercise: { fitness: 0.04, stamina: -6 }
     sleep: { stamina: 8 }
   classAttitudes:
-    FOCUS: { name: 수업 집중, academics: 1.5, scaleAcademicsBySchoolLife: true, stamina: -2, schoolAffinity: 0, schoolEventChance: 0 }
-    DOZE: { name: 졸기, academics: -0.5, scaleAcademicsBySchoolLife: false, stamina: 8, schoolAffinity: 0, schoolEventChance: 0 }
-    TEACHER: { name: 선생님과 대화, academics: 0.5, scaleAcademicsBySchoolLife: false, stamina: 0, schoolAffinity: 3, schoolEventChance: 0.15 }
-    FRIENDS: { name: 친구와 어울리기, academics: 0, scaleAcademicsBySchoolLife: false, stamina: 0, schoolAffinity: 3, schoolEventChance: 0.15 }
-  # 학교생활 배율 = base + 학교생활 관계도 / divisor
-  schoolLifeMultiplier: { base: 1.0, divisor: 200 }
+    FOCUS: { name: 수업 집중, academics: 1.5, scaleAcademicsByFriends: true, stamina: -2, friendAffinity: 0, friendEventChance: 0 }
+    DOZE: { name: 졸기, academics: -0.5, scaleAcademicsByFriends: false, stamina: 8, friendAffinity: 0, friendEventChance: 0 }
+    QUESTION: { name: 선생님께 질문, academics: 1.0, scaleAcademicsByFriends: false, stamina: 0, friendAffinity: 0, friendEventChance: 0 }
+    FRIENDS: { name: 친구와 어울리기, academics: 0, scaleAcademicsByFriends: false, stamina: 0, friendAffinity: 3, friendEventChance: 0.15 }
+  # 수업 집중 학업 배율 = base + 학교 친구 관계도 / divisor
+  friendMultiplier: { base: 1.0, divisor: 200 }
   nightRecovery: 8
   # 방학 주의 밤 회복 (일요일 추가 회복은 이 값에 더한다)
   vacationNightRecovery: 12
@@ -97,7 +99,8 @@ daily:
   sunday:
     rest: { stamina: 25, condition: 1 }
     partTime: { money: 30000, stamina: -10 }
-    meet: { affinity: 5, targets: [coach, teammate, family] }
+    # 잠긴 축(여자친구)은 열린 뒤에만 만날 수 있다
+    meet: { affinity: 5, targets: [coach, teammate, family, girlfriend] }
 
 stamina:
   # 최대치 = maxBase + (기초체력 - fitnessPivot) / fitnessDivisor
@@ -128,14 +131,57 @@ academics:
   semesterWeeklyRate: -0.06
   # 한 주가 끝날 때(학기 중 감소 뒤) 학업 성취가 below 미만이면 다음 주 월~금 오후 팀 훈련이 '나머지 공부'로 바뀐다.
   # 학기 중과 방학 모두 적용. 나머지 공부는 성장 없음, 학업 성취 academics, 체력 stamina.
-  makeup: { below: 30, academics: 2, stamina: -4 }
+  makeup: { below: 30, academics: 2, stamina: -8 }
   # 화면 헤더에 학업 경고를 띄우는 기준
-  warningBelow: 35
+  warningBelow: 40
 
 relationships:
   min: 0
   max: 100
-  start: { coach: 30, teammate: 30, family: 50, school: 30 }
+  start: { coach: 30, teammate: 30, family: 50, friend: 30 }
+  # 처음에는 잠긴 축. 이벤트 효과(unlockAxis)로 열리며 그때 관계도가 unlockAffinity 가 된다.
+  # 일요일에 그 축을 만나지 않은 주가 끝날 때마다 missedWeekChange 만큼 바뀐다.
+  girlfriend: { unlockAffinity: 30, missedWeekChange: -2 }
+
+# 특성: 이벤트 선택지의 trait 를 고르면 점수 +1. 점수가 tiers 이상이면 1/2/3단계.
+traits:
+  tiers: [6, 14, 24]
+  list:
+    - key: hardWorker
+      name: 노력파
+      description: 야간 개인 훈련 성장
+      trainingBonus: { slots: [NIGHT], values: [0.05, 0.10, 0.15] }
+    - key: competitor
+      name: 승부사
+      description: 슈팅·파워·제공권 메뉴 성장 (어느 칸이든)
+      trainingBonus: { menus: [shooting, power, aerial], values: [0.05, 0.10, 0.15] }
+    - key: teamPlayer
+      name: 팀플레이어
+      description: 연계·압박·돌파 메뉴 성장 (어느 칸이든)
+      trainingBonus: { menus: [link, pressing, breakthrough], values: [0.05, 0.10, 0.15] }
+    - key: modelStudent
+      name: 모범생
+      description: 학기 중 주간 학업 감소율
+      semesterWeeklyRate: [-0.05, -0.04, -0.03]
+
+# 인연: 축의 현재 관계도가 tiers 이상이면 1/2/3단계 (관계도가 내려가면 단계도 내려간다)
+bonds:
+  tiers: [40, 60, 80]
+  axes:
+    - axis: coach
+      description: 팀 훈련(오전·오후) 성장
+      trainingBonus: { slots: [MORNING, AFTERNOON], values: [0.03, 0.06, 0.09] }
+    - axis: teammate
+      description: 야간 개인 훈련 성장
+      trainingBonus: { slots: [NIGHT], values: [0.03, 0.06, 0.09] }
+    - axis: family
+      description: 밤 체력 회복
+      nightRecovery: [1, 2, 3]
+    - axis: friend
+      description: 새 효과 없음 (수업 집중의 학업 배율은 학교 친구 관계도로 계산)
+    - axis: girlfriend
+      description: 모든 훈련 메뉴 성장
+      trainingBonus: { values: [0.02, 0.04, 0.06] }
 
 resources:
   money: 0

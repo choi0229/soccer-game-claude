@@ -28,7 +28,7 @@ function choose(view, step) {
         return {
           type: 'DAY',
           dawn: step % 2 ? 'EXERCISE' : 'SLEEP',
-          classAttitude: ['FOCUS', 'DOZE', 'TEACHER', 'FRIENDS'][step % 4],
+          classAttitude: ['FOCUS', 'DOZE', 'QUESTION', 'FRIENDS'][step % 4],
           menus: { MORNING: menus[step % 7], AFTERNOON: menus[(step + 1) % 7], NIGHT: menus[(step + 2) % 7] },
         };
       }

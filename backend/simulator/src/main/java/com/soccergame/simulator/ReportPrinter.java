@@ -116,6 +116,44 @@ public final class ReportPrinter {
         distRow("이벤트 발생 수/년", reports, r -> r.eventsPerRun);
         distRow("1년 뒤 돈(원)", reports, r -> r.money);
         line("");
+        section("7. 특성, 인연, 성장 보너스");
+        header("항목", reports);
+        int traitTierCount = config.rules().traits().tiers().size();
+        for (var trait : config.rules().traits().list()) {
+            row(trait.name() + " 점수 평균", reports,
+                    r -> f1((double) r.traitScoreSum.getOrDefault(trait.key(), 0L) / r.runs));
+            row(trait.name() + " 단계 0/1/2/3", reports, r -> {
+                int[] t = r.traitTiers.get(trait.key());
+                List<String> parts = new java.util.ArrayList<>();
+                for (int i = 0; i <= traitTierCount; i++) {
+                    parts.add(pct(t[i], r.runs));
+                }
+                return String.join(" / ", parts);
+            });
+        }
+        int bondTierCount = config.rules().bonds().tiers().size();
+        for (var bond : config.rules().bonds().axes()) {
+            row(bond.axis().label() + " 인연 잠김/0/1/2/3", reports, r -> {
+                int[] t = r.bondTiers.get(bond.axis());
+                List<String> parts = new java.util.ArrayList<>();
+                for (int i = 0; i <= bondTierCount + 1; i++) {
+                    parts.add(pct(t[i], r.runs));
+                }
+                return String.join(" / ", parts);
+            });
+        }
+        row("여자친구 해금 비율", reports, r -> pct((int) r.girlfriendUnlockWeek.stream()
+                .filter(w -> w < StrategyReport.NEVER).count(), r.runs));
+        row("여자친구 해금 주차 중앙값 (해금된 판)", reports, r -> {
+            double[] w = r.girlfriendUnlockWeek.stream().filter(x -> x < StrategyReport.NEVER)
+                    .mapToDouble(Double::doubleValue).toArray();
+            return w.length == 0 ? "-" : f0(Distribution.of(w).p50()) + "주";
+        });
+        row("메뉴 훈련 평균 적용 보너스", reports, r -> r.menuTrainings == 0 ? "-"
+                : String.format(Locale.ROOT, "+%.1f%%", 100 * r.bonusApplied / r.menuTrainings));
+        row("상한에 걸린 훈련 비율", reports, r -> r.menuTrainings == 0 ? "-"
+                : String.format(Locale.ROOT, "%.1f%%", 100.0 * r.bonusCapped / r.menuTrainings));
+        line("");
         line("이벤트별 판당 평균 발생 횟수");
         line("");
         header("이벤트", reports);
@@ -132,7 +170,7 @@ public final class ReportPrinter {
 
     public String renderSchoolTypes(List<SchoolTypeRow> rows, int runs) {
         out.setLength(0);
-        section("7. 학교 유형별 출전과 리그 순위 (조합마다 " + runs + "판)");
+        section("8. 학교 유형별 출전과 리그 순위 (조합마다 " + runs + "판)");
         line("주차 열: 1년 중 처음으로 그 역할로 출전한 주차의 중앙값 (괄호는 1년 내내 한 번도 없던 판의 비율)");
         line("");
         line("| 학교 유형 (전력) | 전략 | 선발 | 교체 | 벤치 | 부상 결장 | 첫 교체 출전 주차 | 첫 선발 주차 | 평균 평점 | 평균 순위 | 1위 | 1~4위 | 8위 |");

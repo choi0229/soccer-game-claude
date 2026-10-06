@@ -68,7 +68,10 @@ class GameSetupTest {
         assertThat(s.money).isZero();
         assertThat(s.reputation).isZero();
         assertThat(s.affinity).containsEntry(Axis.COACH, 30.0).containsEntry(Axis.TEAMMATE, 30.0)
-                .containsEntry(Axis.FAMILY, 50.0).containsEntry(Axis.SCHOOL, 30.0);
+                .containsEntry(Axis.FAMILY, 50.0).containsEntry(Axis.FRIEND, 30.0)
+                .doesNotContainKey(Axis.GIRLFRIEND);
+        assertThat(s.traitScores).containsOnlyKeys("hardWorker", "competitor", "teamPlayer", "modelStudent")
+                .allSatisfy((k, v) -> assertThat(v).isZero());
         assertThat(s.menuTrainingCounts).hasSize(7).allSatisfy((k, v) -> assertThat(v).isZero());
     }
 

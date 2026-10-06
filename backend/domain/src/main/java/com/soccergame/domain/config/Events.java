@@ -29,23 +29,27 @@ public record Events(List<EventDef> events) {
                           Double coachAffinityMin, Double coachAffinityMax,
                           Double teammateAffinityMin, Double teammateAffinityMax,
                           Double familyAffinityMin, Double familyAffinityMax,
-                          Double schoolAffinityMin, Double schoolAffinityMax,
+                          Double friendAffinityMin, Double friendAffinityMax,
+                          Double girlfriendAffinityMin, Double girlfriendAffinityMax,
+                          List<Axis> unlockedAxes,
                           Double staminaMin, Double staminaMax,
                           Integer conditionMin, Integer conditionMax,
                           Double academicsMin, Double academicsMax,
                           Long moneyMin, Double reputationMin,
                           List<String> requiresFlags, List<String> excludesFlags) {
         public static final Trigger NONE = new Trigger(null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    public record Choice(String text, Effects effects) {
+    /** trait: 이 선택지를 고르면 점수가 1 오르는 특성 키 (없으면 null) */
+    public record Choice(String text, Effects effects, String trait) {
     }
 
-    /** 효과. 능력치(stat)는 능력치 키 → 변화량. */
+    /** 효과. 능력치(stat)는 능력치 키 → 변화량. unlockAxis 는 잠긴 축을 연다. */
     public record Effects(Map<String, Double> stat, Double stamina, Integer condition, Long money, Double academics,
                           Double coachAffinity, Double teammateAffinity, Double familyAffinity,
-                          Double schoolAffinity, Double reputation) {
-        public static final Effects NONE = new Effects(null, null, null, null, null, null, null, null, null, null);
+                          Double friendAffinity, Double girlfriendAffinity, Double reputation, Axis unlockAxis) {
+        public static final Effects NONE = new Effects(null, null, null, null, null, null, null, null, null, null,
+                null, null);
     }
 }

@@ -7,6 +7,8 @@ import com.soccergame.domain.model.SundayActivity;
 /** 엔진 테스트 공용 도우미 */
 final class EngineTestSupport {
     static final GameEngine ENGINE = new GameEngine(TestConfig.load());
+    /** 가족 관계도가 50에서 시작해 처음부터 가족 인연 1단계: 밤 회복 +1 */
+    static final double FAMILY_BOND = 1;
 
     private EngineTestSupport() {
     }

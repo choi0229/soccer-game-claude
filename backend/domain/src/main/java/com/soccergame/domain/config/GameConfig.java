@@ -38,6 +38,7 @@ public final class GameConfig {
     private final Map<String, EventDef> eventsById = new LinkedHashMap<>();
     private final Map<String, SchoolTypeDef> schoolTypesByKey = new LinkedHashMap<>();
     private final Map<String, DefenderTypeDef> defenderTypesByKey = new LinkedHashMap<>();
+    private final Map<String, Rules.TraitDef> traitsByKey = new LinkedHashMap<>();
 
     public GameConfig(Rules rules, TrainingMenus trainingMenus, Scenes scenes, Schools schools, Events events) {
         this.rules = rules;
@@ -58,6 +59,7 @@ public final class GameConfig {
         events.events().forEach(e -> put(eventsById, e.id(), e, "이벤트"));
         schools.types().forEach(t -> put(schoolTypesByKey, t.key(), t, "학교 유형"));
         schools.defenderTypes().forEach(d -> put(defenderTypesByKey, d.key(), d, "수비수 유형"));
+        rules.traits().list().forEach(t -> put(traitsByKey, t.key(), t, "특성"));
         validate();
     }
 
@@ -117,16 +119,60 @@ public final class GameConfig {
         if (schools.nameParts().first().size() * schools.nameParts().second().size() < needNames) {
             throw new ConfigException("학교 이름 조각이 부족합니다");
         }
+        int tiers = rules.traits().tiers().size();
+        for (Rules.TraitDef t : rules.traits().list()) {
+            validateBonus(t.trainingBonus(), tiers, "특성 " + t.key());
+            if (t.semesterWeeklyRate() != null && t.semesterWeeklyRate().size() != tiers) {
+                throw new ConfigException("특성 " + t.key() + " 의 단계 수가 맞지 않습니다");
+            }
+        }
+        int bondTiers = rules.bonds().tiers().size();
+        for (Rules.BondDef b : rules.bonds().axes()) {
+            if (b.axis() == null || !b.axis().hasAffinity()) {
+                throw new ConfigException("인연 축이 올바르지 않습니다: " + b.axis());
+            }
+            validateBonus(b.trainingBonus(), bondTiers, "인연 " + b.axis());
+            if (b.nightRecovery() != null && b.nightRecovery().size() != bondTiers) {
+                throw new ConfigException("인연 " + b.axis() + " 의 단계 수가 맞지 않습니다");
+            }
+        }
         for (EventDef e : events.events()) {
             if (e.choices() == null || e.choices().size() < 2 || e.choices().size() > 3) {
                 throw new ConfigException("이벤트 선택지는 2~3개여야 합니다: " + e.id());
             }
             for (Events.Choice c : e.choices()) {
+                if (c.trait() != null && !traitsByKey.containsKey(c.trait())) {
+                    throw new ConfigException("이벤트 " + e.id() + ": 알 수 없는 특성 " + c.trait());
+                }
+                if (c.effects() != null && c.effects().unlockAxis() != null
+                        && !c.effects().unlockAxis().lockedAtStart()) {
+                    throw new ConfigException("이벤트 " + e.id() + ": 처음부터 열려 있는 축은 열 수 없습니다");
+                }
                 if (c.effects() != null && c.effects().stat() != null) {
                     c.effects().stat().keySet().forEach(k -> requireStat(k, "이벤트 " + e.id()));
                 }
             }
         }
+    }
+
+    private void validateBonus(Rules.TrainingBonus bonus, int tiers, String where) {
+        if (bonus == null) {
+            return;
+        }
+        if (bonus.values() == null || bonus.values().size() != tiers) {
+            throw new ConfigException(where + ": 단계별 값의 수가 단계 수와 다릅니다");
+        }
+        if (bonus.menus() != null) {
+            bonus.menus().forEach(m -> {
+                if (!menusById.containsKey(m)) {
+                    throw new ConfigException(where + ": 알 수 없는 메뉴 " + m);
+                }
+            });
+        }
+    }
+
+    public Rules.TraitDef trait(String key) {
+        return traitsByKey.get(key);
     }
 
     private void requireStat(String key, String where) {

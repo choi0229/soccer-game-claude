@@ -12,10 +12,3 @@ export const roleLabel: Record<string, string> = {
 
 export const resultLabel = (r: 'W' | 'D' | 'L', pk: boolean | null) =>
   pk === null ? { W: '승', D: '무', L: '패' }[r] : pk ? '무 (승부차기 승)' : '무 (승부차기 패)';
-
-export const affinityLabel: Record<string, string> = {
-  coach: '감독',
-  teammate: '동료',
-  family: '가족',
-  school: '학교생활',
-};

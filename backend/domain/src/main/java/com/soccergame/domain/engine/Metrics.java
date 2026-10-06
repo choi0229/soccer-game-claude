@@ -9,6 +9,10 @@ public final class Metrics {
     public int injuries;
     public int injuryDaysMissed;
     public int trainingSessions;
+    /** 메뉴 훈련 횟수, 그중 보너스 합계, 상한에 걸린 횟수 */
+    public int menuTrainings;
+    public double bonusApplied;
+    public int bonusCapped;
     /** 실제로 나머지 공부를 한 날 수 */
     public int makeupDays;
 

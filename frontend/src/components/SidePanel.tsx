@@ -1,6 +1,6 @@
 import type { GameView, StatView } from '../types';
 import { useUiStore } from '../store';
-import { f1, resultLabel, roleLabel, signed } from '../format';
+import { f0, f1, resultLabel, roleLabel, signed } from '../format';
 
 export default function SidePanel({ view }: { view: GameView }) {
   const tab = useUiStore((s) => s.sideTab);
@@ -9,10 +9,12 @@ export default function SidePanel({ view }: { view: GameView }) {
     <div className="box">
       <div className="tabs">
         <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}>능력치</button>
+        <button className={tab === 'growth' ? 'active' : ''} onClick={() => setTab('growth')}>특성·인연</button>
         <button className={tab === 'league' ? 'active' : ''} onClick={() => setTab('league')}>리그 순위</button>
         <button className={tab === 'matches' ? 'active' : ''} onClick={() => setTab('matches')}>경기 기록</button>
       </div>
       {tab === 'stats' && <StatsPanel stats={view.stats} />}
+      {tab === 'growth' && <GrowthPanel view={view} />}
       {tab === 'league' && <LeagueTable view={view} />}
       {tab === 'matches' && <MatchList view={view} />}
     </div>
@@ -42,6 +44,44 @@ function StatsPanel({ stats }: { stats: StatView[] }) {
           </tbody>
         </table>
       ))}
+    </>
+  );
+}
+
+function GrowthPanel({ view }: { view: GameView }) {
+  return (
+    <>
+      <table className="stats">
+        <caption>특성</caption>
+        <thead><tr><th>특성</th><th className="num">점수</th><th>단계</th><th>다음 단계</th></tr></thead>
+        <tbody>
+          {view.traits.map((t) => (
+            <tr key={t.key} title={t.tierEffects.map((e, i) => `${i + 1}단계: ${e}`).join('\n')}>
+              <td>{t.name}<div className="muted tiny">{t.effect}</div></td>
+              <td className="num">{t.score}</td>
+              <td>{t.tier}단계</td>
+              <td className="small">{t.remaining === null ? '최고 단계' : `${t.remaining}점 남음 (${t.nextAt}점)`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <table className="stats">
+        <caption>인연</caption>
+        <thead><tr><th>축</th><th className="num">관계도</th><th>단계</th><th>다음 단계</th></tr></thead>
+        <tbody>
+          {view.bonds.map((b) => (
+            <tr key={b.axis} className={b.locked ? 'locked' : ''} title={b.tierEffects.map((e, i) => `${i + 1}단계: ${e}`).join('\n')}>
+              <td>{b.label}<div className="muted tiny">{b.effect}</div></td>
+              <td className="num">{b.locked || b.affinity === null ? '-' : f0(b.affinity)}</td>
+              <td>{b.locked ? '잠김' : `${b.tier}단계`}</td>
+              <td className="small">
+                {b.locked ? '이벤트로 열림' : b.nextAt === null ? '최고 단계' : `관계도 ${b.nextAt}`}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="muted tiny">특성 보너스와 인연 보너스를 합친 훈련 성장 보너스에는 상한이 있습니다. 항목에 마우스를 올리면 단계별 효과가 보입니다.</p>
     </>
   );
 }

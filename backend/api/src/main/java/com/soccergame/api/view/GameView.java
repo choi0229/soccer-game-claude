@@ -13,6 +13,7 @@ import java.util.UUID;
 public record GameView(UUID runId, long seed, int actionCount, String fingerprint, Phase phase, DateView date,
                        SchoolView school, ResourcesView resources, List<StatView> stats, SelectionsView selections,
                        List<SlotView> slots, MatchPreview matchToday, OptionsView options, List<StandingView> league, CupView cup,
+                       List<TraitView> traits, List<BondView> bonds,
                        EventView pendingEvent, ActionOutcome lastOutcome, List<MatchRecord> matches,
                        SeasonSummary summary) {
 
@@ -29,7 +30,7 @@ public record GameView(UUID runId, long seed, int actionCount, String fingerprin
 
     public record ResourcesView(double stamina, double maxStamina, int condition, String conditionName, long money,
                                 double academics, double reputation, Map<String, Double> affinity,
-                                double schoolLifeMultiplier, boolean injured, String injuredUntil,
+                                double friendMultiplier, boolean injured, String injuredUntil,
                                 double selectionScore, String expectedRole, StaminaInfo staminaInfo,
                                 AcademicsInfo academicsInfo) {
     }
@@ -78,6 +79,23 @@ public record GameView(UUID runId, long seed, int actionCount, String fingerprin
     }
 
     public record EventView(String eventId, String axis, String title, String body, String source,
-                            List<String> choices) {
+                            List<ChoiceView> choices) {
+    }
+
+    /** trait: 고르면 오르는 특성 이름 (없으면 null) */
+    public record ChoiceView(String text, String trait) {
+    }
+
+    /**
+     * 특성. nextAt 은 다음 단계 기준 점수(최고 단계면 null), remaining 은 남은 점수.
+     * tierEffects 는 1/2/3단계 효과 설명.
+     */
+    public record TraitView(String key, String name, int score, int tier, Integer nextAt, Integer remaining,
+                            String effect, List<String> tierEffects) {
+    }
+
+    /** 인연. locked 면 affinity 와 tier 는 의미 없다. nextAt 은 다음 단계 관계도(최고 단계면 null). */
+    public record BondView(String axis, String label, boolean locked, Double affinity, int tier, Double nextAt,
+                           String effect, List<String> tierEffects) {
     }
 }

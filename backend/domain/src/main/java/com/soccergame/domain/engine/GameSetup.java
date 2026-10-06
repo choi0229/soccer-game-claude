@@ -99,7 +99,7 @@ final class GameSetup {
         s.reputation = rules.resources().reputation();
         s.academics = rules.academics().start();
         for (Axis axis : Axis.values()) {
-            if (axis.hasAffinity()) {
+            if (axis.hasAffinity() && !axis.lockedAtStart()) {
                 s.affinity.put(axis, config.initialAffinity(axis));
             }
         }
@@ -108,5 +108,6 @@ final class GameSetup {
         TrainingMenus menus = config.trainingMenus();
         s.selections.menus.putAll(menus.defaults());
         menus.menus().forEach(m -> s.menuTrainingCounts.put(m.id(), 0));
+        rules.traits().list().forEach(t -> s.traitScores.put(t.key(), 0));
     }
 }

@@ -45,7 +45,7 @@ class GameServiceTest {
                         ? new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.MEET, Axis.COACH, null, null)
                         : new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.REST, null, null, null);
                 default -> step % 5 == 0
-                        ? day(DawnChoice.EXERCISE, ClassAttitude.TEACHER, Map.of(TrainingSlot.NIGHT, "power"))
+                        ? day(DawnChoice.EXERCISE, ClassAttitude.FRIENDS, Map.of(TrainingSlot.NIGHT, "power"))
                         : day(null, null, Map.of());
             };
             if (request == null) {

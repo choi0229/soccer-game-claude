@@ -27,7 +27,7 @@ public final class YearRunner {
                 case EVENT -> {
                     PendingEvent pending = s.pendingEvents.peekFirst();
                     EventDef def = engine.config().event(pending.eventId()).orElseThrow();
-                    engine.apply(s, new Action.EventChoice(def.id(), choice.nextInt(def.choices().size())));
+                    engine.apply(s, new Action.EventChoice(def.id(), strategy.eventChoice(s, def, choice)));
                 }
                 case WEEKDAY, SATURDAY -> engine.apply(s, strategy.day(s, engine, choice));
                 case SUNDAY -> engine.apply(s, strategy.sunday(s, engine, choice));

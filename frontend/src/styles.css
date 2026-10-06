@@ -109,3 +109,5 @@ tr.clickable:hover { background: var(--bg); }
 .help { color: var(--muted); cursor: help; }
 .warning { margin-top: 8px; padding: 6px 10px; border-radius: 6px; background: #fff3cd; color: #664d03; }
 @media (prefers-color-scheme: dark) { .warning { background: #3b2f00; color: #ffe08a; } }
+.trait-badge { margin-left: 8px; padding: 1px 6px; border-radius: 8px; font-size: 11px; background: rgba(31, 111, 235, 0.15); color: var(--accent); }
+tr.locked td { color: var(--muted); }

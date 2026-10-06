@@ -2,6 +2,8 @@ package com.soccergame.simulator;
 
 import com.soccergame.domain.config.GameConfig;
 import com.soccergame.domain.engine.GameState;
+import com.soccergame.domain.engine.Modifiers;
+import com.soccergame.domain.model.Axis;
 import com.soccergame.domain.match.MatchRecord;
 import com.soccergame.domain.model.MatchRole;
 
@@ -52,11 +54,23 @@ public final class StrategyReport {
     final List<Double> money = new ArrayList<>();
     final List<Double> eventsPerRun = new ArrayList<>();
     final Map<String, Integer> eventCounts = new LinkedHashMap<>();
+    /** 특성 키 → 단계별 판 수 [0..3], 점수 합 */
+    final Map<String, int[]> traitTiers = new LinkedHashMap<>();
+    final Map<String, Long> traitScoreSum = new LinkedHashMap<>();
+    /** 축 → [잠김, 0, 1, 2, 3] 판 수 */
+    final Map<Axis, int[]> bondTiers = new LinkedHashMap<>();
+    final List<Double> girlfriendUnlockWeek = new ArrayList<>();
+    long menuTrainings;
+    double bonusApplied;
+    long bonusCapped;
     int runs;
+
+    private final Modifiers modifiers;
 
     public StrategyReport(String strategy, GameConfig config, int weeks) {
         this.strategy = strategy;
         this.config = config;
+        this.modifiers = new Modifiers(config);
         this.weeks = weeks;
         this.weeklyStamina = new double[weeks];
         config.allStatKeys().forEach(k -> finalStats.put(k, new ArrayList<>()));
@@ -124,9 +138,24 @@ public final class StrategyReport {
             best = "우승";
         }
         cupBest.merge(best, 1, Integer::sum);
-        coachAffinity.add(s.affinity.get(com.soccergame.domain.model.Axis.COACH));
+        coachAffinity.add(s.affinity.get(Axis.COACH));
         money.add((double) s.money);
         eventsPerRun.add((double) s.eventHistory.size());
+        for (var trait : config.rules().traits().list()) {
+            int score = s.traitScores.getOrDefault(trait.key(), 0);
+            traitTiers.computeIfAbsent(trait.key(), k -> new int[config.rules().traits().tiers().size() + 1])
+                    [modifiers.traitTier(s, trait.key())]++;
+            traitScoreSum.merge(trait.key(), (long) score, Long::sum);
+        }
+        for (var bond : config.rules().bonds().axes()) {
+            int tier = modifiers.bondTier(s, bond.axis());
+            bondTiers.computeIfAbsent(bond.axis(), k -> new int[config.rules().bonds().tiers().size() + 2])[tier + 1]++;
+        }
+        Integer unlocked = s.axisUnlockedWeek.get(Axis.GIRLFRIEND);
+        girlfriendUnlockWeek.add((double) (unlocked == null ? NEVER : unlocked + 1));
+        menuTrainings += s.metrics.menuTrainings;
+        bonusApplied += s.metrics.bonusApplied;
+        bonusCapped += s.metrics.bonusCapped;
         s.eventHistory.forEach(id -> eventCounts.merge(id, 1, Integer::sum));
     }
 

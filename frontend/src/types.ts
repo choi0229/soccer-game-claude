@@ -63,7 +63,7 @@ export interface GameView {
   school: { id: number; name: string; typeName: string; strength: number; region: string };
   resources: {
     stamina: number; maxStamina: number; condition: number; conditionName: string; money: number;
-    academics: number; reputation: number; affinity: Record<string, number>; schoolLifeMultiplier: number;
+    academics: number; reputation: number; affinity: Record<string, number>; friendMultiplier: number;
     injured: boolean; injuredUntil: string | null; selectionScore: number; expectedRole: string;
     staminaInfo: { nightRecovery: number; sundayExtraRecovery: number; lowBelow: number; maxFormula: string };
     academicsInfo: { makeupBelow: number; warningBelow: number; warning: string | null };
@@ -78,10 +78,25 @@ export interface GameView {
   options: { dawn: Option[]; classAttitudes: Option[]; menus: MenuOption[]; sundayActivities: Option[]; meetTargets: Option[] };
   league: StandingView[];
   cup: { name: string; playerAlive: boolean; roundsPlayed: number; stagesReached: string[] };
-  pendingEvent: { eventId: string; axis: string; title: string; body: string | null; source: string; choices: string[] } | null;
+  traits: TraitView[];
+  bonds: BondView[];
+  pendingEvent: {
+    eventId: string; axis: string; title: string; body: string | null; source: string;
+    choices: { text: string; trait: string | null }[];
+  } | null;
   lastOutcome: ActionOutcome | null;
   matches: MatchRecord[];
   summary: SeasonSummary;
+}
+
+export interface TraitView {
+  key: string; name: string; score: number; tier: number; nextAt: number | null; remaining: number | null;
+  effect: string; tierEffects: string[];
+}
+
+export interface BondView {
+  axis: string; label: string; locked: boolean; affinity: number | null; tier: number; nextAt: number | null;
+  effect: string; tierEffects: string[];
 }
 
 export interface Meta { position: string; archetype: string; weeksPerYear: number; startLabel: string; endLabel: string }

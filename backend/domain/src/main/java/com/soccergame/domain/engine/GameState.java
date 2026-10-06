@@ -46,7 +46,12 @@ public final class GameState {
     public long money;
     public double academics;
     public double reputation;
+    /** 열린 축의 관계도. 잠긴 축(여자친구)은 열리기 전까지 키가 없다 */
     public final Map<Axis, Double> affinity = new EnumMap<>(Axis.class);
+    /** 잠겼던 축이 열린 주 */
+    public final Map<Axis, Integer> axisUnlockedWeek = new EnumMap<>(Axis.class);
+    /** 특성 점수 (설정 파일 순서) */
+    public final Map<String, Integer> traitScores = new LinkedHashMap<>();
 
     /** 이 절대 일 번호 전까지 부상 (-1 이면 부상 아님) */
     public int injuredUntilDay = -1;

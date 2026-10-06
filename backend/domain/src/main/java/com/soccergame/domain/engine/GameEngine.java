@@ -11,6 +11,7 @@ import com.soccergame.domain.match.MatchEngine;
 import com.soccergame.domain.model.SundayActivity;
 import com.soccergame.domain.model.TrainingSlot;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +25,7 @@ public final class GameEngine {
     private final Resources resources;
     private final GameSetup setup;
     private final DayProcessor days;
+    private final Modifiers modifiers;
 
     public GameEngine(GameConfig config) {
         this.config = config;
@@ -33,7 +35,9 @@ public final class GameEngine {
         EventEngine events = new EventEngine(config, calendar);
         Competitions competitions = new Competitions(config, calendar, resources, matchEngine);
         this.setup = new GameSetup(config, calendar, resources);
-        this.days = new DayProcessor(config, calendar, resources, new TrainingCalculator(config), competitions, events);
+        this.modifiers = new Modifiers(config);
+        this.days = new DayProcessor(config, calendar, resources, new TrainingCalculator(config), competitions, events,
+                modifiers);
     }
 
     public GameConfig config() {
@@ -46,6 +50,10 @@ public final class GameEngine {
 
     public Resources resources() {
         return resources;
+    }
+
+    public Modifiers modifiers() {
+        return modifiers;
     }
 
     public GameState newGame(long seed) {
@@ -79,6 +87,7 @@ public final class GameEngine {
 
     public ActionOutcome apply(GameState s, Action action) {
         Phase phase = phase(s);
+        Map<String, Integer> tiersBefore = modifiers.snapshot(s);
         ActionOutcome outcome = switch (action) {
             case Action.Day day -> {
                 if (phase != Phase.WEEKDAY && phase != Phase.SATURDAY) {
@@ -104,7 +113,8 @@ public final class GameEngine {
                     throw new InvalidActionException("일요일 행동을 골라 주세요");
                 }
                 if (sunday.activity() == SundayActivity.MEET
-                        && !config.rules().daily().sunday().meet().targets().contains(sunday.meetTarget())) {
+                        && (!config.rules().daily().sunday().meet().targets().contains(sunday.meetTarget())
+                        || !s.affinity.containsKey(sunday.meetTarget()))) {
                     throw new InvalidActionException("만날 수 없는 상대입니다: " + sunday.meetTarget());
                 }
                 yield days.sunday(s, sunday.activity(), sunday.meetTarget());
@@ -116,6 +126,12 @@ public final class GameEngine {
                 yield resolveEvent(s, choice);
             }
         };
+        List<String> notes = modifiers.changes(tiersBefore, modifiers.snapshot(s));
+        if (!notes.isEmpty()) {
+            List<LogEntry> log = new ArrayList<>(outcome.log());
+            notes.forEach(n -> log.add(new LogEntry("알림", n)));
+            outcome = new ActionOutcome(outcome.dateLabel(), log, outcome.match(), outcome.newEvents());
+        }
         s.actionCount++;
         s.lastOutcome = outcome;
         return outcome;
@@ -148,6 +164,10 @@ public final class GameEngine {
         }
         Choice picked = def.choices().get(choice.choiceIndex());
         String applied = resources.apply(s, picked.effects());
+        if (picked.trait() != null) {
+            s.traitScores.merge(picked.trait(), 1, Integer::sum);
+            applied += ", 특성 " + config.trait(picked.trait()).name() + " +1";
+        }
         s.pendingEvents.removeFirst();
         return new ActionOutcome(def.title(), List.of(new LogEntry("이벤트", picked.text() + " → " + applied)), null,
                 List.of());

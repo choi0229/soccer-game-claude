@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static com.soccergame.domain.engine.EngineTestSupport.ENGINE;
+import static com.soccergame.domain.engine.EngineTestSupport.FAMILY_BOND;
 import static com.soccergame.domain.engine.EngineTestSupport.plainSemesterMonday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,8 +38,8 @@ class DayProcessorTest {
         assertThat(s.stats.get("composure") - composure).isCloseTo(0.09, within(1e-9));
         assertThat(s.stats.get("shotPower") - power).isCloseTo(0.072, within(1e-9));
         assertThat(s.stats.get("kickPower") - kick).isCloseTo(0.072, within(1e-9));
-        // 체력: 60 + 8 - 2 - 8 - 6 + 8
-        assertThat(s.stamina).isCloseTo(60, within(1e-9));
+        // 체력: 60 + 8 - 2 - 8 - 6 + 8 + 가족 인연
+        assertThat(s.stamina).isCloseTo(60 + FAMILY_BOND, within(1e-9));
         assertThat(s.day).isEqualTo(Weekday.TUE);
         assertThat(s.menuTrainingCounts).containsEntry("shooting", 1).containsEntry("power", 1);
     }
@@ -100,8 +101,8 @@ class DayProcessorTest {
                 .extracting(LogEntry::text).allMatch(t -> t.startsWith("재활"));
         assertThat(s.stats.get("finishing")).isEqualTo(before.get("finishing"));
         assertThat(s.stats.get("fitness")).isEqualTo(before.get("fitness"));
-        // 50 + 8(운동 대신 더 자기) - 2(수업) + 8
-        assertThat(s.stamina).isEqualTo(64);
+        // 50 + 8(운동 대신 더 자기) - 2(수업) + 8 + 가족 인연
+        assertThat(s.stamina).isEqualTo(64 + FAMILY_BOND);
     }
 
     @Test
@@ -117,7 +118,7 @@ class DayProcessorTest {
             s = plainSemesterMonday(seed);
             s.stamina = 29;
             s.selections.dawn = DawnChoice.EXERCISE;
-            s.selections.classAttitude = ClassAttitude.TEACHER;
+            s.selections.classAttitude = ClassAttitude.QUESTION;
             ENGINE.apply(s, Action.Day.keep());
             // 새벽 29(위험) → 23, 오후 23(위험) → 15, 야간 15(위험): 부상이 나면 그 뒤는 재활
             slots += 3;
@@ -134,7 +135,7 @@ class DayProcessorTest {
         s.stamina = 20;
         int week = s.week;
         ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
-        assertThat(s.stamina).isEqualTo(Math.min(20 + 25 + 8 + 20, ENGINE.resources().maxStamina(s)));
+        assertThat(s.stamina).isEqualTo(Math.min(20 + 25 + 8 + FAMILY_BOND + 20, ENGINE.resources().maxStamina(s)));
         assertThat(s.condition).isEqualTo(3);
         assertThat(s.week).isEqualTo(week + 1);
         assertThat(s.day).isEqualTo(Weekday.MON);
@@ -155,7 +156,13 @@ class DayProcessorTest {
         assertThatThrownBy(() -> {
             GameState t = plainSemesterMonday(6);
             t.day = Weekday.SUN;
-            ENGINE.apply(t, new Action.Sunday(SundayActivity.MEET, Axis.SCHOOL));
+            ENGINE.apply(t, new Action.Sunday(SundayActivity.MEET, Axis.FRIEND));
+        }).isInstanceOf(InvalidActionException.class);
+        // 잠긴 여자친구 축은 만날 수 없다
+        assertThatThrownBy(() -> {
+            GameState t = plainSemesterMonday(6);
+            t.day = Weekday.SUN;
+            ENGINE.apply(t, new Action.Sunday(SundayActivity.MEET, Axis.GIRLFRIEND));
         }).isInstanceOf(InvalidActionException.class);
     }
 
@@ -191,8 +198,8 @@ class DayProcessorTest {
                 .singleElement().asString().startsWith("나머지 공부");
         assertThat(s.stats.get("finishing")).isEqualTo(finishing);
         assertThat(s.academics).isCloseTo(20 - 0.5 + 2, within(1e-9));
-        // 더 자기 +8, 졸기 +8, 나머지 공부 -4, 야간 -6, 밤 +8
-        assertThat(s.stamina).isEqualTo(stamina + 8 + 8 - 4 - 6 + 8);
+        // 더 자기 +8, 졸기 +8, 나머지 공부 -8, 야간 -6, 밤 +8
+        assertThat(s.stamina).isEqualTo(stamina + 8 + 8 - 8 - 6 + 8 + FAMILY_BOND);
         assertThat(s.metrics.makeupDays).isEqualTo(1);
     }
 
@@ -245,13 +252,13 @@ class DayProcessorTest {
         s.stamina = 20;
         ActionOutcome out = ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
         assertThat(out.log()).filteredOn(e -> e.slot().equals("밤")).extracting(LogEntry::text).singleElement()
-                .asString().startsWith("체력 휴식 +25, 밤 회복 +8, 일요일 추가 회복 +20, 합계 +53");
+                .asString().startsWith("체력 휴식 +25, 밤 회복 +8, 가족 인연 +1, 일요일 추가 회복 +20, 합계 +54");
 
         GameState full = plainSemesterMonday(13);
         full.day = Weekday.SUN;
         ActionOutcome capped = ENGINE.apply(full, new Action.Sunday(SundayActivity.PART_TIME, null));
         assertThat(capped.log()).filteredOn(e -> e.slot().equals("밤")).extracting(LogEntry::text).singleElement()
-                .asString().contains("아르바이트 -10").contains("합계 +18").contains("제한으로 실제");
+                .asString().contains("아르바이트 -10").contains("합계 +19").contains("제한으로 실제");
     }
 
     @Test
@@ -282,13 +289,13 @@ class DayProcessorTest {
         s.stamina = 60;
         // 더 자기 +8, 오전·오후 팀 훈련 -8 -8, 야간 -6, 방학 밤 회복 +12
         ENGINE.apply(s, new Action.Day(DawnChoice.SLEEP, null, null));
-        assertThat(s.stamina).isCloseTo(60 + 8 - 8 - 8 - 6 + 12, within(1e-9));
+        assertThat(s.stamina).isCloseTo(60 + 8 - 8 - 8 - 6 + 12 + FAMILY_BOND, within(1e-9));
 
         s.day = Weekday.SUN;
         s.stamina = 20;
         ENGINE.apply(s, new Action.Sunday(SundayActivity.PART_TIME, null));
         // 아르바이트 -10, 방학 밤 회복 +12, 일요일 추가 +20
-        assertThat(s.stamina).isCloseTo(20 - 10 + 12 + 20, within(1e-9));
+        assertThat(s.stamina).isCloseTo(20 - 10 + 12 + FAMILY_BOND + 20, within(1e-9));
     }
 
     @Test

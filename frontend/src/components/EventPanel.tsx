@@ -16,7 +16,10 @@ export default function EventPanel({ event, disabled, onChoose }: Props) {
       {event.body && <p className="body">{event.body}</p>}
       <div className="choices">
         {event.choices.map((c, i) => (
-          <button key={i} disabled={disabled} onClick={() => onChoose(i)}>{c}</button>
+          <button key={i} disabled={disabled} onClick={() => onChoose(i)}>
+            {c.text}
+            {c.trait && <span className="trait-badge">{c.trait} +1</span>}
+          </button>
         ))}
       </div>
       <p className="muted small">선택해야 다음으로 넘어갈 수 있습니다.</p>

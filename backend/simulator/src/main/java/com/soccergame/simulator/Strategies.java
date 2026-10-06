@@ -12,7 +12,12 @@ import com.soccergame.domain.model.SundayActivity;
 import com.soccergame.domain.model.TrainingSlot;
 import com.soccergame.domain.random.Rng;
 
+import com.soccergame.domain.config.Events;
+import com.soccergame.domain.config.Events.EventDef;
+
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 
@@ -22,7 +27,7 @@ public final class Strategies {
     }
 
     public static List<Strategy> all() {
-        return List.of(new RandomStrategy(), new TrainingFocus(), new Balanced(), new AcademicNeglect());
+        return List.of(new RandomStrategy(), new TrainingFocus(), new Balanced(), new AcademicNeglect(), new GrowthMax());
     }
 
     private static Map<TrainingSlot, String> allSlots(String menuId) {
@@ -31,6 +36,56 @@ public final class Strategies {
             menus.put(slot, menuId);
         }
         return menus;
+    }
+
+    /** 지금 만날 수 있는 상대 (잠긴 축 제외) */
+    static List<Axis> meetable(GameState s, GameEngine engine) {
+        return engine.config().rules().daily().sunday().meet().targets().stream()
+                .filter(s.affinity::containsKey).toList();
+    }
+
+    /**
+     * 성장 극대화: 일과는 훈련 위주와 같되 학업 성취가 40 이상이면 수업에서 친구와 어울린다.
+     * 이벤트는 노력파·승부사 선택지를 우선(없으면 무작위), 소개 이벤트에서는 연락처를 받는다.
+     * 일요일은 감독 → 동료 → 여자친구(열린 뒤) 순환.
+     */
+    static final class GrowthMax extends TrainingFocus {
+        private static final Set<String> PREFERRED = Set.of("hardWorker", "competitor");
+
+        @Override
+        public String name() {
+            return "성장 극대화";
+        }
+
+        @Override
+        ClassAttitude classAttitude(GameState s) {
+            return s.academics < 40 ? ClassAttitude.FOCUS : ClassAttitude.FRIENDS;
+        }
+
+        @Override
+        public Action.Sunday sunday(GameState s, GameEngine engine, Rng choice) {
+            List<Axis> order = new ArrayList<>(List.of(Axis.COACH, Axis.TEAMMATE));
+            if (s.affinity.containsKey(Axis.GIRLFRIEND)) {
+                order.add(Axis.GIRLFRIEND);
+            }
+            return new Action.Sunday(SundayActivity.MEET, order.get(s.week % order.size()));
+        }
+
+        @Override
+        public int eventChoice(GameState s, EventDef event, Rng choice) {
+            List<Events.Choice> choices = event.choices();
+            List<Integer> preferred = new ArrayList<>();
+            for (int i = 0; i < choices.size(); i++) {
+                Events.Choice c = choices.get(i);
+                if (c.effects() != null && c.effects().unlockAxis() != null) {
+                    return i;
+                }
+                if (c.trait() != null && PREFERRED.contains(c.trait())) {
+                    preferred.add(i);
+                }
+            }
+            return preferred.isEmpty() ? choice.nextInt(choices.size()) : choice.pick(preferred);
+        }
     }
 
     /** 1년 동안 지난 평일 수 (월요일 3월 1주 = 0) */
@@ -59,8 +114,7 @@ public final class Strategies {
         @Override
         public Action.Sunday sunday(GameState s, GameEngine engine, Rng choice) {
             SundayActivity activity = choice.pick(List.of(SundayActivity.values()));
-            Axis target = activity == SundayActivity.MEET
-                    ? choice.pick(engine.config().rules().daily().sunday().meet().targets()) : null;
+            Axis target = activity == SundayActivity.MEET ? choice.pick(meetable(s, engine)) : null;
             return new Action.Sunday(activity, target);
         }
     }
@@ -112,7 +166,7 @@ public final class Strategies {
      */
     static final class Balanced implements Strategy {
         private static final List<ClassAttitude> CLASS_ORDER =
-                List.of(ClassAttitude.FOCUS, ClassAttitude.DOZE, ClassAttitude.TEACHER, ClassAttitude.FRIENDS);
+                List.of(ClassAttitude.FOCUS, ClassAttitude.DOZE, ClassAttitude.QUESTION, ClassAttitude.FRIENDS);
 
         @Override
         public String name() {
@@ -129,14 +183,16 @@ public final class Strategies {
                     allSlots(menus.get(index % menus.size()).id()));
         }
 
+        /** 휴식 → 감독 → 동료 → 가족 → 여자친구(열린 뒤부터) 순환 */
         @Override
         public Action.Sunday sunday(GameState s, GameEngine engine, Rng choice) {
-            return switch (s.week % 4) {
-                case 0 -> new Action.Sunday(SundayActivity.REST, null);
-                case 1 -> new Action.Sunday(SundayActivity.MEET, Axis.COACH);
-                case 2 -> new Action.Sunday(SundayActivity.MEET, Axis.TEAMMATE);
-                default -> new Action.Sunday(SundayActivity.MEET, Axis.FAMILY);
-            };
+            List<Axis> order = new ArrayList<>(List.of(Axis.COACH, Axis.TEAMMATE, Axis.FAMILY));
+            if (s.affinity.containsKey(Axis.GIRLFRIEND)) {
+                order.add(Axis.GIRLFRIEND);
+            }
+            int i = s.week % (order.size() + 1);
+            return i == 0 ? new Action.Sunday(SundayActivity.REST, null)
+                    : new Action.Sunday(SundayActivity.MEET, order.get(i - 1));
         }
     }
 }

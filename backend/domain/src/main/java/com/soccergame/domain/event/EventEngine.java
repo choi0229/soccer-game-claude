@@ -72,7 +72,12 @@ public final class EventEngine {
         if (!within(s.affinity.get(Axis.COACH), t.coachAffinityMin(), t.coachAffinityMax())) return false;
         if (!within(s.affinity.get(Axis.TEAMMATE), t.teammateAffinityMin(), t.teammateAffinityMax())) return false;
         if (!within(s.affinity.get(Axis.FAMILY), t.familyAffinityMin(), t.familyAffinityMax())) return false;
-        if (!within(s.affinity.get(Axis.SCHOOL), t.schoolAffinityMin(), t.schoolAffinityMax())) return false;
+        if (!within(s.affinity.get(Axis.FRIEND), t.friendAffinityMin(), t.friendAffinityMax())) return false;
+        if (t.unlockedAxes() != null && !t.unlockedAxes().stream().allMatch(s.affinity::containsKey)) return false;
+        if (t.girlfriendAffinityMin() != null || t.girlfriendAffinityMax() != null) {
+            Double gf = s.affinity.get(Axis.GIRLFRIEND);
+            if (gf == null || !within(gf, t.girlfriendAffinityMin(), t.girlfriendAffinityMax())) return false;
+        }
         if (!within(s.stamina, t.staminaMin(), t.staminaMax())) return false;
         if (t.conditionMin() != null && s.condition < t.conditionMin()) return false;
         if (t.conditionMax() != null && s.condition > t.conditionMax()) return false;

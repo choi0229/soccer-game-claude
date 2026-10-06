@@ -37,7 +37,11 @@ public final class Resources {
         return rules.condition().levels().get(s.condition);
     }
 
+    /** 잠긴 축(관계도가 없는 축)에는 아무 일도 하지 않는다 */
     public void affinity(GameState s, Axis axis, double delta) {
+        if (!s.affinity.containsKey(axis)) {
+            return;
+        }
         Rules.RelationshipRules r = rules.relationships();
         s.affinity.put(axis, clamp(s.affinity.get(axis) + delta, r.min(), r.max()));
     }
@@ -55,10 +59,20 @@ public final class Resources {
         s.reputation = Math.max(0, s.reputation + delta);
     }
 
-    /** 학교생활 배율 = base + 학교생활 관계도 / divisor */
-    public double schoolLifeMultiplier(GameState s) {
-        Rules.SchoolLifeMultiplier m = rules.daily().schoolLifeMultiplier();
-        return m.base() + s.affinity.get(Axis.SCHOOL) / m.divisor();
+    /** 수업 집중 학업 배율 = base + 학교 친구 관계도 / divisor */
+    public double friendMultiplier(GameState s) {
+        Rules.FriendMultiplier m = rules.daily().friendMultiplier();
+        return m.base() + s.affinity.get(Axis.FRIEND) / m.divisor();
+    }
+
+    /** 잠긴 축을 연다. 이미 열려 있으면 아무 일도 없다. 열렸으면 true */
+    public boolean unlock(GameState s, Axis axis) {
+        if (axis != Axis.GIRLFRIEND || s.affinity.containsKey(axis)) {
+            return false;
+        }
+        s.affinity.put(axis, rules.relationships().girlfriend().unlockAffinity());
+        s.axisUnlockedWeek.put(axis, s.week);
+        return true;
     }
 
     /** 이벤트 효과를 적용하고, 적용한 내용을 사람이 읽을 문장으로 돌려준다. */
@@ -92,7 +106,12 @@ public final class Resources {
         affinityEffect(s, Axis.COACH, effects.coachAffinity(), parts);
         affinityEffect(s, Axis.TEAMMATE, effects.teammateAffinity(), parts);
         affinityEffect(s, Axis.FAMILY, effects.familyAffinity(), parts);
-        affinityEffect(s, Axis.SCHOOL, effects.schoolAffinity(), parts);
+        affinityEffect(s, Axis.FRIEND, effects.friendAffinity(), parts);
+        affinityEffect(s, Axis.GIRLFRIEND, effects.girlfriendAffinity(), parts);
+        if (effects.unlockAxis() != null && unlock(s, effects.unlockAxis())) {
+            parts.add(effects.unlockAxis().label() + " 축이 열렸다 (관계도 "
+                    + plain(s.affinity.get(effects.unlockAxis())) + ")");
+        }
         if (effects.reputation() != null) {
             reputation(s, effects.reputation());
             parts.add("평판 " + signed(effects.reputation()));
@@ -101,7 +120,7 @@ public final class Resources {
     }
 
     private void affinityEffect(GameState s, Axis axis, Double delta, List<String> parts) {
-        if (delta != null) {
+        if (delta != null && s.affinity.containsKey(axis)) {
             affinity(s, axis, delta);
             parts.add(axis.label() + " 관계도 " + signed(delta));
         }

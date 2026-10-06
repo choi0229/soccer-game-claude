@@ -31,4 +31,38 @@ class SimulatorTest {
         String report = SimulatorMain.run(config, 5, 1);
         assertThat(report).contains("무작위", "훈련 위주", "균형", "## 1.", "## 5.", "리그 8위");
     }
+
+    @Test
+    void growthMaxTakesContactAndPrefersHardWorkerOrCompetitor() {
+        GameEngine engine = new GameEngine(config);
+        GameState s = engine.newGame(1);
+        Strategies.GrowthMax strategy = new Strategies.GrowthMax();
+        var intro = config.event("friend_007").orElseThrow();
+        assertThat(strategy.eventChoice(s, intro, new com.soccergame.domain.random.Rng(1))).isZero();
+        var firstMeeting = config.event("coach_001").orElseThrow(); // 0 승부사, 1 팀플레이어, 2 없음
+        for (long seed = 0; seed < 20; seed++) {
+            assertThat(strategy.eventChoice(s, firstMeeting, new com.soccergame.domain.random.Rng(seed))).isZero();
+        }
+    }
+
+    @Test
+    void balancedAddsGirlfriendToSundayRotationOnceUnlocked() {
+        GameEngine engine = new GameEngine(config);
+        GameState s = engine.newGame(1);
+        Strategies.Balanced balanced = new Strategies.Balanced();
+        java.util.Set<com.soccergame.domain.model.Axis> met = new java.util.HashSet<>();
+        for (int w = 0; w < 10; w++) {
+            s.week = w;
+            var a = balanced.sunday(s, engine, null);
+            if (a.meetTarget() != null) met.add(a.meetTarget());
+        }
+        assertThat(met).doesNotContain(com.soccergame.domain.model.Axis.GIRLFRIEND);
+        s.affinity.put(com.soccergame.domain.model.Axis.GIRLFRIEND, 30.0);
+        for (int w = 0; w < 10; w++) {
+            s.week = w;
+            var a = balanced.sunday(s, engine, null);
+            if (a.meetTarget() != null) met.add(a.meetTarget());
+        }
+        assertThat(met).contains(com.soccergame.domain.model.Axis.GIRLFRIEND);
+    }
 }

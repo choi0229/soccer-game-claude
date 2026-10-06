@@ -34,9 +34,10 @@ final class DayProcessor {
     private final TrainingCalculator training;
     private final Competitions competitions;
     private final EventEngine events;
+    private final Modifiers modifiers;
 
     DayProcessor(GameConfig config, GameCalendar calendar, Resources resources, TrainingCalculator training,
-                 Competitions competitions, EventEngine events) {
+                 Competitions competitions, EventEngine events, Modifiers modifiers) {
         this.config = config;
         this.rules = config.rules();
         this.calendar = calendar;
@@ -44,6 +45,7 @@ final class DayProcessor {
         this.training = training;
         this.competitions = competitions;
         this.events = events;
+        this.modifiers = modifiers;
     }
 
     /** 훈련 칸의 종류 */
@@ -89,7 +91,7 @@ final class DayProcessor {
             }
             trainingSlot(s, log, NIGHT, Kind.PERSONAL, TrainingSlot.NIGHT);
         }
-        endOfDay(s, log, nightRecovery(s));
+        endOfDay(s, log);
         return new ActionOutcome(date, log, match, newEvents);
     }
 
@@ -121,8 +123,8 @@ final class DayProcessor {
         ClassAttitude attitude = s.selections.classAttitude;
         Rules.ClassAttitudeRule rule = rules.daily().classAttitudes().get(attitude);
         double academics = rule.academics();
-        if (rule.scaleAcademicsBySchoolLife()) {
-            academics *= resources.schoolLifeMultiplier(s);
+        if (rule.scaleAcademicsByFriends()) {
+            academics *= resources.friendMultiplier(s);
         }
         List<String> parts = new ArrayList<>();
         if (academics != 0) {
@@ -133,13 +135,13 @@ final class DayProcessor {
             resources.stamina(s, rule.stamina());
             parts.add("체력 " + Resources.signed(rule.stamina()));
         }
-        if (rule.schoolAffinity() != 0) {
-            resources.affinity(s, Axis.SCHOOL, rule.schoolAffinity());
-            parts.add("학교생활 관계도 " + Resources.signed(rule.schoolAffinity()));
+        if (rule.friendAffinity() != 0) {
+            resources.affinity(s, Axis.FRIEND, rule.friendAffinity());
+            parts.add(Axis.FRIEND.label() + " 관계도 " + Resources.signed(rule.friendAffinity()));
         }
         log.add(new LogEntry(MORNING, rule.name() + ": " + String.join(", ", parts)));
-        if (rule.schoolEventChance() > 0 && s.rng.chance(rule.schoolEventChance())) {
-            events.trigger(s, Axis.SCHOOL, "CLASS").ifPresent(e -> newEvents.add(e.id()));
+        if (rule.friendEventChance() > 0 && s.rng.chance(rule.friendEventChance())) {
+            events.trigger(s, Axis.FRIEND, "CLASS").ifPresent(e -> newEvents.add(e.id()));
         }
     }
 
@@ -182,15 +184,36 @@ final class DayProcessor {
         TrainingMenu menu = config.menu(s.selections.menus.get(slot)).orElseThrow();
         Rules.SlotTraining st = kind == Kind.TEAM ? rules.training().team() : rules.training().personal();
         boolean risky = s.stamina < rules.stamina().injuryRiskBelow();
-        Map<String, Double> gains = training.train(s, menu, st.baseGrowth(), resources.conditionLevel(s).training());
+        Modifiers.TrainingBonus bonus = modifiers.training(s, slot, menu.id());
+        Map<String, Double> gains = training.train(s, menu, st.baseGrowth(), resources.conditionLevel(s).training(),
+                bonus.applied());
         resources.stamina(s, st.stamina());
         s.menuTrainingCounts.merge(menu.id(), 1, Integer::sum);
         s.metrics.trainingSessions++;
+        s.metrics.menuTrainings++;
+        s.metrics.bonusApplied += bonus.applied();
+        if (bonus.capped()) {
+            s.metrics.bonusCapped++;
+        }
         List<String> parts = new ArrayList<>();
         gains.forEach((k, v) -> parts.add(config.stat(k).name() + " +" + String.format("%.3f", v)));
         log.add(new LogEntry(slotName, kind.label + " [" + menu.name() + "] " + String.join(", ", parts)
-                + ", 체력 " + Resources.signed(st.stamina())));
+                + bonusText(bonus) + ", 체력 " + Resources.signed(st.stamina())));
         injuryRoll(s, log, slotName, risky);
+    }
+
+    /** 예: " (승부사 +5%, 감독 인연 +3%)" 또는 상한에 걸리면 " (… 합계 +36% → 상한 +30%)" */
+    private static String bonusText(Modifiers.TrainingBonus bonus) {
+        if (bonus.parts().isEmpty()) {
+            return "";
+        }
+        List<String> items = new ArrayList<>();
+        bonus.parts().forEach(p -> items.add(p.label() + " +" + Modifiers.pct(p.value())));
+        String text = " (" + String.join(", ", items);
+        if (bonus.capped()) {
+            text += ", 합계 +" + Modifiers.pct(bonus.raw()) + " → 상한 +" + Modifiers.pct(bonus.applied());
+        }
+        return text + ")";
     }
 
     /** 체력 30 미만에서 훈련했으면 3% 확률로 부상. 기간은 1~4주 균등. */
@@ -233,7 +256,7 @@ final class DayProcessor {
             resources.condition(s, -1);
             log.add(new LogEntry("토요일", "체력이 떨어진 채 한 주를 마쳐 컨디션이 한 단계 내려갔다."));
         }
-        endOfDay(s, log, nightRecovery(s));
+        endOfDay(s, log);
         return new ActionOutcome(date, log, match, List.of());
     }
 
@@ -245,6 +268,7 @@ final class DayProcessor {
         String date = calendar.label(s.week, s.day);
         Rules.SundayRules sr = rules.daily().sunday();
         double staminaBefore = s.stamina;
+        boolean metGirlfriend = activity == SundayActivity.MEET && meetTarget == Axis.GIRLFRIEND;
         String activityStamina = null;
         double activityDelta = 0;
         switch (activity) {
@@ -276,7 +300,7 @@ final class DayProcessor {
             events.trigger(s, null, "SUNDAY").ifPresent(e -> newEvents.add(e.id()));
         }
         sundayNight(s, log, activityStamina, activityDelta, staminaBefore);
-        endOfWeek(s, log);
+        endOfWeek(s, log, metGirlfriend);
         return new ActionOutcome(date, log, null, newEvents);
     }
 
@@ -292,17 +316,20 @@ final class DayProcessor {
                              double staminaBefore) {
         double night = nightRecovery(s);
         double extra = rules.daily().sundayExtraRecovery();
+        List<Modifiers.Part> bondParts = modifiers.nightRecoveryBonus(s);
+        double bond = bondParts.stream().mapToDouble(Modifiers.Part::value).sum();
         s.metrics.staminaSum[s.week] += s.stamina;
         s.metrics.staminaSamples[s.week]++;
-        resources.stamina(s, night + extra);
-        double nominal = activityDelta + night + extra;
+        resources.stamina(s, night + bond + extra);
+        double nominal = activityDelta + night + bond + extra;
         double actual = s.stamina - staminaBefore;
         StringBuilder text = new StringBuilder("체력 ");
         if (activity != null) {
             text.append(activity).append(' ').append(Resources.signed(activityDelta)).append(", ");
         }
-        text.append(calendar.isVacation(s.week) ? "방학 밤 회복 " : "밤 회복 ").append(Resources.signed(night))
-                .append(", 일요일 추가 회복 ").append(Resources.signed(extra))
+        text.append(calendar.isVacation(s.week) ? "방학 밤 회복 " : "밤 회복 ").append(Resources.signed(night));
+        bondParts.forEach(p -> text.append(", ").append(p.label()).append(' ').append(Resources.signed(p.value())));
+        text.append(", 일요일 추가 회복 ").append(Resources.signed(extra))
                 .append(", 합계 ").append(Resources.signed(nominal));
         if (Math.abs(actual - nominal) > 1e-9) {
             text.append(" (최대 체력 ").append(Math.round(resources.maxStamina(s))).append(" 제한으로 실제 ")
@@ -312,24 +339,40 @@ final class DayProcessor {
         log.add(new LogEntry("밤", text.toString()));
     }
 
-    private void endOfDay(GameState s, List<LogEntry> log, double recovery) {
+    /** 평일·토요일 밤: 밤 회복 + 인연(가족) 추가 회복 */
+    private void endOfDay(GameState s, List<LogEntry> log) {
+        double night = nightRecovery(s);
+        List<Modifiers.Part> bondParts = modifiers.nightRecoveryBonus(s);
+        double recovery = night + bondParts.stream().mapToDouble(Modifiers.Part::value).sum();
         s.metrics.staminaSum[s.week] += s.stamina;
         s.metrics.staminaSamples[s.week]++;
         resources.stamina(s, recovery);
-        log.add(new LogEntry("밤", "잠자리에 들었다: 체력 " + Resources.signed(recovery) + " (현재 " + Math.round(s.stamina) + ")"));
+        StringBuilder detail = new StringBuilder();
+        bondParts.forEach(p -> detail.append(", ").append(p.label()).append(' ').append(Resources.signed(p.value())));
+        log.add(new LogEntry("밤", "잠자리에 들었다: 체력 " + Resources.signed(recovery)
+                + (detail.isEmpty() ? "" : " (밤 회복 " + Resources.signed(night) + detail + ")")
+                + " (현재 " + Math.round(s.stamina) + ")"));
         if (s.day != Weekday.SUN) {
             s.day = Weekday.values()[s.day.ordinal() + 1];
         }
     }
 
     /** 일요일이 끝나면 학기 중 학업 감소, 나머지 공부 판정을 하고 다음 주 월요일로 넘어간다. */
-    private void endOfWeek(GameState s, List<LogEntry> log) {
-        double rate = rules.academics().semesterWeeklyRate();
+    private void endOfWeek(GameState s, List<LogEntry> log, boolean metGirlfriend) {
+        if (s.affinity.containsKey(Axis.GIRLFRIEND) && !metGirlfriend) {
+            double change = rules.relationships().girlfriend().missedWeekChange();
+            resources.affinity(s, Axis.GIRLFRIEND, change);
+            log.add(new LogEntry("관계", "이번 주 " + Axis.GIRLFRIEND.label() + "를 만나지 않아 관계도 "
+                    + Resources.signed(change) + " (현재 " + Math.round(s.affinity.get(Axis.GIRLFRIEND)) + ")"));
+        }
+        double rate = modifiers.semesterWeeklyRate(s);
         if (rate != 0 && !calendar.isVacation(s.week)) {
             double weekly = s.academics * rate;
             resources.academics(s, weekly);
+            boolean changed = rate != rules.academics().semesterWeeklyRate();
             log.add(new LogEntry("학업", "학기 중 한 주가 지나 학업 성취 " + Resources.signed(round2(weekly))
-                    + " (현재 " + Math.round(s.academics) + ")"));
+                    + " (감소율 " + Modifiers.pct(-rate) + (changed ? ", 모범생" : "") + ", 현재 "
+                    + Math.round(s.academics) + ")"));
         }
         Rules.Makeup makeup = rules.academics().makeup();
         if (s.academics < makeup.below() && s.week + 1 < calendar.weeksPerYear()) {

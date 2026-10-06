@@ -7,7 +7,9 @@ public enum Axis {
     @JsonProperty("coach") COACH("감독"),
     @JsonProperty("teammate") TEAMMATE("동료"),
     @JsonProperty("family") FAMILY("가족"),
-    @JsonProperty("school") SCHOOL("학교생활"),
+    @JsonProperty("friend") FRIEND("학교 친구"),
+    /** 처음에는 잠겨 있고 이벤트로 열린다 */
+    @JsonProperty("girlfriend") GIRLFRIEND("여자친구"),
     @JsonProperty("common") COMMON("공통");
 
     private final String label;
@@ -22,5 +24,10 @@ public enum Axis {
 
     public boolean hasAffinity() {
         return this != COMMON;
+    }
+
+    /** 처음에는 잠겨 있어 관계도가 없는 축 */
+    public boolean lockedAtStart() {
+        return this == GIRLFRIEND;
     }
 }

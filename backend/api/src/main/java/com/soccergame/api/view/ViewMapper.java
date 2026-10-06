@@ -10,6 +10,7 @@ import com.soccergame.domain.config.Rules;
 import com.soccergame.domain.config.Schools;
 import com.soccergame.domain.engine.GameEngine;
 import com.soccergame.domain.engine.GameState;
+import com.soccergame.domain.engine.Modifiers;
 import com.soccergame.domain.engine.PendingEvent;
 import com.soccergame.domain.engine.Phase;
 import com.soccergame.domain.engine.SeasonSummary;
@@ -46,7 +47,8 @@ public class ViewMapper {
     public GameView toView(UUID runId, GameState s) {
         Phase phase = engine.phase(s);
         return new GameView(runId, s.seed, s.actionCount, StateFingerprint.of(s), phase, date(s), school(s),
-                resources(s), stats(s), selections(s), slots(s), matchToday(s), options(), league(s), cup(s), pendingEvent(s),
+                resources(s), stats(s), selections(s), slots(s), matchToday(s), options(s), league(s), cup(s),
+                traits(s), bonds(s), pendingEvent(s),
                 s.lastOutcome, List.copyOf(s.matches), SeasonSummary.of(config, s));
     }
 
@@ -77,7 +79,7 @@ public class ViewMapper {
         double score = matchEngine.selectionScore(s.affinity.get(Axis.COACH), s.stats);
         return new ResourcesView(s.stamina, engine.resources().maxStamina(s), s.condition,
                 engine.resources().conditionLevel(s).name(), s.money, s.academics, s.reputation, affinity,
-                engine.resources().schoolLifeMultiplier(s), s.isInjured(), injuredUntil, score,
+                engine.resources().friendMultiplier(s), s.isInjured(), injuredUntil, score,
                 matchEngine.role(score, s.playerSchool().strength(), s.isInjured()).label(), staminaInfo(s),
                 academicsInfo(s));
     }
@@ -193,7 +195,43 @@ public class ViewMapper {
         return new SlotView(key, label, "FIXED", activity, null, note);
     }
 
-    private OptionsView options() {
+    private List<TraitView> traits(GameState s) {
+        Modifiers m = engine.modifiers();
+        List<Integer> tiers = config.rules().traits().tiers();
+        List<TraitView> list = new ArrayList<>();
+        for (Rules.TraitDef t : config.rules().traits().list()) {
+            int score = s.traitScores.getOrDefault(t.key(), 0);
+            int tier = m.traitTier(s, t.key());
+            Integer nextAt = tier < tiers.size() ? tiers.get(tier) : null;
+            List<String> effects = new ArrayList<>();
+            for (int i = 1; i <= tiers.size(); i++) {
+                effects.add(m.traitEffect(t, i));
+            }
+            list.add(new TraitView(t.key(), t.name(), score, tier, nextAt, nextAt == null ? null : nextAt - score,
+                    m.traitEffect(t, tier), effects));
+        }
+        return list;
+    }
+
+    private List<BondView> bonds(GameState s) {
+        Modifiers m = engine.modifiers();
+        List<Double> tiers = config.rules().bonds().tiers();
+        List<BondView> list = new ArrayList<>();
+        for (Rules.BondDef b : config.rules().bonds().axes()) {
+            Double affinity = s.affinity.get(b.axis());
+            int tier = Math.max(0, m.bondTier(s, b.axis()));
+            Double nextAt = affinity != null && tier < tiers.size() ? tiers.get(tier) : null;
+            List<String> effects = new ArrayList<>();
+            for (int i = 1; i <= tiers.size(); i++) {
+                effects.add(m.bondEffect(b, i));
+            }
+            list.add(new BondView(b.axis().name().toLowerCase(), b.axis().label(), affinity == null, affinity, tier,
+                    nextAt, affinity == null ? "잠김" : m.bondEffect(b, tier), effects));
+        }
+        return list;
+    }
+
+    private OptionsView options(GameState s) {
         Rules.DailyRules daily = config.rules().daily();
         List<Option> dawn = List.of(
                 new Option(DawnChoice.EXERCISE.name(), DawnChoice.EXERCISE.label(),
@@ -203,10 +241,10 @@ public class ViewMapper {
         for (ClassAttitude a : ClassAttitude.values()) {
             Rules.ClassAttitudeRule r = daily.classAttitudes().get(a);
             List<String> parts = new ArrayList<>();
-            if (r.academics() != 0) parts.add("학업 " + signed(r.academics()) + (r.scaleAcademicsBySchoolLife() ? "×학교생활 배율" : ""));
+            if (r.academics() != 0) parts.add("학업 " + signed(r.academics()) + (r.scaleAcademicsByFriends() ? "×학교 친구 배율" : ""));
             if (r.stamina() != 0) parts.add("체력 " + signed(r.stamina()));
-            if (r.schoolAffinity() != 0) parts.add("학교생활 관계도 " + signed(r.schoolAffinity()));
-            if (r.schoolEventChance() > 0) parts.add(Math.round(r.schoolEventChance() * 100) + "% 학교생활 이벤트");
+            if (r.friendAffinity() != 0) parts.add("학교 친구 관계도 " + signed(r.friendAffinity()));
+            if (r.friendEventChance() > 0) parts.add(Math.round(r.friendEventChance() * 100) + "% 학교 친구 이벤트");
             classes.add(new Option(a.name(), r.name(), String.join(", ", parts)));
         }
         List<MenuOption> menus = config.trainingMenus().menus().stream()
@@ -223,6 +261,7 @@ public class ViewMapper {
                 new Option(SundayActivity.MEET.name(), SundayActivity.MEET.label(),
                         "관계도 " + signed(sr.meet().affinity()) + ", 그 축 이벤트 1편"));
         List<Option> targets = sr.meet().targets().stream()
+                .filter(s.affinity::containsKey)
                 .map(a -> new Option(a.name().toLowerCase(), a.label(), null)).toList();
         return new OptionsView(dawn, classes, menus, sunday, targets);
     }
@@ -251,7 +290,8 @@ public class ViewMapper {
         }
         Events.EventDef def = config.event(pending.eventId()).orElseThrow();
         return new EventView(def.id(), def.axis().label(), def.title(), def.body(), pending.source(),
-                def.choices().stream().map(Events.Choice::text).toList());
+                def.choices().stream().map(c -> new ChoiceView(c.text(),
+                        c.trait() == null ? null : config.trait(c.trait()).name())).toList());
     }
 
     private static String signed(double v) {

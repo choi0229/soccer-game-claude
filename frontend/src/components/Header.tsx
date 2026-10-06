@@ -1,5 +1,5 @@
 import type { GameView } from '../types';
-import { affinityLabel, f0, f1, won } from '../format';
+import { f0, f1, won } from '../format';
 
 export default function Header({ view, onQuit }: { view: GameView; onQuit: () => void }) {
   const r = view.resources;
@@ -29,8 +29,8 @@ export default function Header({ view, onQuit }: { view: GameView; onQuit: () =>
         <div>돈 <b>{won(r.money)}</b></div>
         <div>학업 성취 <b>{f1(r.academics)}</b></div>
         <div>평판 <b>{f1(r.reputation)}</b></div>
-        {Object.entries(r.affinity).map(([k, v]) => (
-          <div key={k}>{affinityLabel[k] ?? k} <b>{f0(v)}</b></div>
+        {view.bonds.filter((b) => !b.locked && b.affinity !== null).map((b) => (
+          <div key={b.axis} title={`인연 ${b.tier}단계: ${b.effect}`}>{b.label} <b>{f0(b.affinity!)}</b></div>
         ))}
         <div title="감독 관계도와 훈련 능력치 상위 평균으로 계산 (가중치는 설정 파일)">
           출전 점수 <b>{f1(r.selectionScore)}</b> → {r.expectedRole}

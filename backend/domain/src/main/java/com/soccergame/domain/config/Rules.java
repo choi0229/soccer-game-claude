@@ -5,6 +5,7 @@ import com.soccergame.domain.model.Axis;
 import com.soccergame.domain.model.ClassAttitude;
 import com.soccergame.domain.model.DawnChoice;
 import com.soccergame.domain.model.MatchRole;
+import com.soccergame.domain.model.TrainingSlot;
 
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,9 @@ public record Rules(
         ResourceRules resources,
         MatchRules match,
         ReputationRules reputation,
-        EventRules events) {
+        EventRules events,
+        TraitRules traits,
+        BondRules bonds) {
 
     public record WeekRef(int month, int week) {
     }
@@ -73,7 +76,7 @@ public record Rules(
 
     // ---- 훈련과 일과 ----
 
-    public record TrainingRules(SlotTraining team, SlotTraining personal, List<DecayStep> decay) {
+    public record TrainingRules(SlotTraining team, SlotTraining personal, List<DecayStep> decay, double bonusCap) {
     }
 
     public record SlotTraining(double baseGrowth, double stamina) {
@@ -83,7 +86,7 @@ public record Rules(
     }
 
     public record DailyRules(DawnChoice defaultDawn, ClassAttitude defaultClassAttitude, Dawn dawn, Map<ClassAttitude, ClassAttitudeRule> classAttitudes,
-                             SchoolLifeMultiplier schoolLifeMultiplier, double nightRecovery,
+                             FriendMultiplier friendMultiplier, double nightRecovery,
                              double vacationNightRecovery,
                              double sundayExtraRecovery, SundayRules sunday) {
     }
@@ -97,11 +100,11 @@ public record Rules(
     public record DawnSleep(double stamina) {
     }
 
-    public record ClassAttitudeRule(String name, double academics, boolean scaleAcademicsBySchoolLife,
-                                    double stamina, double schoolAffinity, double schoolEventChance) {
+    public record ClassAttitudeRule(String name, double academics, boolean scaleAcademicsByFriends,
+                                    double stamina, double friendAffinity, double friendEventChance) {
     }
 
-    public record SchoolLifeMultiplier(double base, double divisor) {
+    public record FriendMultiplier(double base, double divisor) {
     }
 
     public record SundayRules(Rest rest, PartTime partTime, Meet meet) {
@@ -137,19 +140,24 @@ public record Rules(
     public record Makeup(double below, double academics, double stamina) {
     }
 
-    public record RelationshipRules(double min, double max, AffinityStart start) {
+    public record RelationshipRules(double min, double max, AffinityStart start, LockedAxis girlfriend) {
     }
 
-    public record AffinityStart(double coach, double teammate, double family, double school) {
+    /** 처음부터 열려 있는 축의 시작 관계도 */
+    public record AffinityStart(double coach, double teammate, double family, double friend) {
         public double of(Axis axis) {
             return switch (axis) {
                 case COACH -> coach;
                 case TEAMMATE -> teammate;
                 case FAMILY -> family;
-                case SCHOOL -> school;
-                case COMMON -> throw new IllegalArgumentException("common 축에는 관계도가 없습니다");
+                case FRIEND -> friend;
+                case GIRLFRIEND, COMMON -> throw new IllegalArgumentException(axis + " 축은 처음부터 열려 있지 않습니다");
             };
         }
+    }
+
+    /** 잠긴 축: 열릴 때의 관계도, 일요일에 만나지 않은 주의 변화량 */
+    public record LockedAxis(double unlockAffinity, double missedWeekChange) {
     }
 
     public record ResourceRules(long money, double reputation) {
@@ -212,5 +220,33 @@ public record Rules(
     }
 
     public record EventRules(double sundayChance, int cooldownWeeks) {
+    }
+
+    // ---- 특성과 인연 ----
+
+    /**
+     * 훈련 성장 보너스. slots 가 비어 있으면 모든 칸, menus 가 비어 있으면 모든 메뉴.
+     * values 는 1/2/3단계 값(비율).
+     */
+    public record TrainingBonus(List<TrainingSlot> slots, List<String> menus, List<Double> values) {
+        public boolean appliesTo(TrainingSlot slot, String menuId) {
+            return (slots == null || slots.isEmpty() || slots.contains(slot))
+                    && (menus == null || menus.isEmpty() || menus.contains(menuId));
+        }
+    }
+
+    public record TraitRules(List<Integer> tiers, List<TraitDef> list) {
+    }
+
+    /** semesterWeeklyRate: 단계별로 학기 중 주간 학업 감소율을 이 값으로 바꾼다 */
+    public record TraitDef(String key, String name, String description, TrainingBonus trainingBonus,
+                           List<Double> semesterWeeklyRate) {
+    }
+
+    public record BondRules(List<Double> tiers, List<BondDef> axes) {
+    }
+
+    /** nightRecovery: 단계별 밤 체력 회복 추가량 */
+    public record BondDef(Axis axis, String description, TrainingBonus trainingBonus, List<Double> nightRecovery) {
     }
 }
