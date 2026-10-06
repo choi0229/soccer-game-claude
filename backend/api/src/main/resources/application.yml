@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: soccer-game-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/soccer}
+    username: ${DB_USER:soccer}
+    password: ${DB_PASSWORD:soccer}
+  flyway:
+    enabled: true
+
+server:
+  port: ${PORT:8080}
+
+game:
+  # 수치·표 설정 디렉터리 (docker 에서는 /config 로 마운트)
+  config-dir: ${GAME_CONFIG_DIR:../../config}

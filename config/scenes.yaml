@@ -1,0 +1,59 @@
+# 경기 장면표. 장면은 extraOnly 가 아닌 것 중에서 균등 무작위로 뽑는다.
+# outcome: GOAL(골) / EXTRA_SCENE(extraScene 장면 1개 추가) / NEXT_SHOT_BONUS(다음 골 판정 +takeOnBonus)
+#          ASSIST(도움, 팀 득점 +1) / PRESS(pressingGoalChance 확률로 팀 득점 +1)
+scenes:
+  - id: BOX_SHOT
+    name: 박스 안 슈팅
+    stats: [finishing]
+    outcome: GOAL
+    success: 박스 안에서 침착하게 마무리, 골!
+    failure: 박스 안 슈팅이 골키퍼에게 막혔다.
+  - id: LONG_SHOT
+    name: 중거리 슈팅
+    stats: [shotPower]
+    outcome: GOAL
+    success: 아크 밖에서 때린 중거리포가 그물을 흔든다, 골!
+    failure: 중거리 슈팅이 크로스바를 넘어갔다.
+  - id: ONE_ON_ONE
+    name: 골키퍼와 1대1
+    stats: [composure]
+    outcome: GOAL
+    success: 골키퍼와 1대1, 가볍게 넘겨 골!
+    failure: 1대1 찬스에서 골키퍼의 선방에 막혔다.
+  - id: CROSS_HEADER
+    name: 크로스 헤더
+    stats: [heading]
+    outcome: GOAL
+    success: 측면 크로스를 머리로 받아 넣었다, 골!
+    failure: 크로스에 머리를 댔지만 골문을 벗어났다.
+  - id: SET_PIECE
+    name: 세트피스 킥
+    stats: [kickPower]
+    outcome: GOAL
+    success: 프리킥이 벽을 넘어 골문 구석에 꽂힌다, 골!
+    failure: 프리킥이 수비벽에 걸렸다.
+  - id: RUN_IN_BEHIND
+    name: 뒷공간 침투
+    stats: [offTheBall, speed]
+    outcome: EXTRA_SCENE
+    extraScene: ONE_ON_ONE
+    success: 수비 뒷공간을 파고들어 골키퍼와 마주 섰다!
+    failure: 침투 타이밍이 늦어 오프사이드에 걸렸다.
+  - id: TAKE_ON
+    name: 1대1 돌파
+    stats: [dribbling, firstTouch]
+    outcome: NEXT_SHOT_BONUS
+    success: 수비수를 제치고 돌파에 성공했다. 다음 슈팅 기회가 좋아진다.
+    failure: 돌파를 시도했지만 공을 빼앗겼다.
+  - id: COMBINATION
+    name: 연계 패스
+    stats: [passing, teamwork]
+    outcome: ASSIST
+    success: 절묘한 연계 패스로 동료의 골을 도왔다, 도움!
+    failure: 연계 패스가 끊겼다.
+  - id: PRESSING
+    name: 전방 압박
+    stats: [workRate]
+    outcome: PRESS
+    success: 전방 압박으로 상대의 빌드업을 끊어 냈다.
+    failure: 압박이 한 박자 늦어 상대가 빠져나갔다.

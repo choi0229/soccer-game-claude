@@ -1,0 +1,28 @@
+# 가상의 32개교. 학교 이름은 판을 시작할 때 아래 조각을 조합해 생성한다.
+regions:
+  - { id: 1, name: 동부권 }
+  - { id: 2, name: 서부권 }
+  - { id: 3, name: 남부권 }
+  - { id: 4, name: 북부권 }
+
+# 유형별 학교 수와 팀 전력. 각 권역에 count / 권역 수 만큼 고르게 나눈다.
+types:
+  - { key: PRO, name: 프로 산하, count: 4, strength: 80, nameFormat: "{name} FC U-18" }
+  - { key: ELITE, name: 명문, count: 4, strength: 70, nameFormat: "{name}고" }
+  - { key: STRONG, name: 강호, count: 8, strength: 60, nameFormat: "{name}고" }
+  - { key: RISING, name: 도약, count: 8, strength: 50, nameFormat: "{name}고" }
+  - { key: DARK_HORSE, name: 다크호스, count: 8, strength: 40, nameFormat: "{name}공고" }
+
+# 핵심 수비수 유형 (학교마다 무작위 1개)
+defenderTypes:
+  - { key: FIGHTER, name: 파이터형, passive: vsFighter }
+  - { key: COMMANDER, name: 커맨더형, passive: vsCommander }
+
+# 플레이어 학교: 유형과 권역
+player:
+  schoolType: DARK_HORSE
+  region: 1
+
+nameParts:
+  first: [가람, 누리, 다온, 라온, 미르, 별솔, 새벽, 아라, 은하, 하람, 해밀, 늘품]
+  second: [솔, 뫼, 내, 벌, 들, 길, 터, 골]

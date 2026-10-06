@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: soccer
+      POSTGRES_USER: soccer
+      POSTGRES_PASSWORD: soccer
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soccer -d soccer"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/soccer
+      DB_USER: soccer
+      DB_PASSWORD: soccer
+      GAME_CONFIG_DIR: /config
+    volumes:
+      # 수치를 바꾸면 api 만 재시작하면 된다: docker compose restart api
+      - ./config:/config:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  web:
+    build: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+  # 밸런스 시뮬레이터: docker compose run --rm simulator [--runs 1000] [--out /out/report.md]
+  simulator:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    entrypoint: ["java", "-jar", "/app/simulator.jar", "--config", "/config"]
+    volumes:
+      - ./config:/config:ro
+      - ./:/out
+
+volumes:
+  db-data:

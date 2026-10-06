@@ -1,0 +1,192 @@
+# 고교 축구 육성 시뮬레이션 - 기본 규칙 수치 (튜닝 전 초기값)
+# 주(week) 표기는 {month, week} 이고, 1년은 3월 1주에서 시작한다.
+
+calendar:
+  weeksPerYear: 48
+  weeksPerMonth: 4
+  startMonth: 3
+  vacations:
+    - { name: 여름방학, from: { month: 7, week: 4 }, to: { month: 8, week: 4 } }
+    - { name: 겨울방학, from: { month: 1, week: 1 }, to: { month: 2, week: 4 } }
+  league:
+    matchDay: SAT
+    blocks:
+      - { fromRound: 1, toRound: 7, from: { month: 3, week: 3 }, to: { month: 5, week: 1 } }
+      - { fromRound: 8, toRound: 14, from: { month: 5, week: 4 }, to: { month: 7, week: 2 } }
+  cup:
+    name: 춘계배
+    # 라운드 순서대로의 경기일 (32강, 16강, 8강, 4강, 결승)
+    matchDays:
+      - { month: 3, week: 1, day: WED }
+      - { month: 3, week: 1, day: SAT }
+      - { month: 3, week: 2, day: TUE }
+      - { month: 3, week: 2, day: THU }
+      - { month: 3, week: 2, day: SAT }
+
+stats:
+  min: 0
+  max: 100
+  trained:
+    - { key: finishing, name: 결정력, group: attack }
+    - { key: shotPower, name: 슈팅 파워, group: attack }
+    - { key: composure, name: 침착성, group: attack }
+    - { key: offTheBall, name: 오프더볼, group: attack }
+    - { key: heading, name: 헤더, group: attack }
+    - { key: speed, name: 스피드, group: attack }
+    - { key: firstTouch, name: 퍼스트 터치, group: link }
+    - { key: workRate, name: 활동량, group: link }
+    - { key: dribbling, name: 드리블, group: link }
+    - { key: passing, name: 패스 정확도, group: link }
+    - { key: kickPower, name: 킥력, group: link }
+    - { key: teamwork, name: 팀워크, group: link }
+  passive:
+    - { key: momentum, name: 기세 }
+    - { key: vsFighter, name: 파이터형 대응 }
+    - { key: vsCommander, name: 커맨더형 대응 }
+    - { key: clutch, name: 클러치 }
+    - { key: mental, name: 멘탈 }
+    - { key: fitness, name: 기초체력 }
+  start:
+    trained: { min: 15, max: 35 }
+    passive: { min: 30, max: 50 }
+  grades:
+    - { grade: S, min: 90 }
+    - { grade: A, min: 80 }
+    - { grade: B, min: 70 }
+    - { grade: C, min: 60 }
+    - { grade: D, min: 50 }
+    - { grade: E, min: 40 }
+    - { grade: F, min: 30 }
+    - { grade: G, min: 0 }
+
+archetype:
+  key: power
+  name: 파워형
+  position: 공격수
+  primaryStats: [shotPower, heading, kickPower]
+  primaryStartBonus: 10
+  primaryGrowthMultiplier: 1.2
+
+training:
+  team: { baseGrowth: 0.15, stamina: -8 }
+  personal: { baseGrowth: 0.10, stamina: -6 }
+  # 능력치가 below 미만이면 factor 적용 (위에서부터 처음 맞는 구간)
+  decay:
+    - { below: 60, factor: 1.0 }
+    - { below: 80, factor: 0.7 }
+    - { below: 1000, factor: 0.4 }
+
+daily:
+  # 판 시작 시 새벽·오전 수업 기본 선택
+  defaultDawn: SLEEP
+  defaultClassAttitude: FOCUS
+  dawn:
+    exercise: { fitness: 0.1, stamina: -6 }
+    sleep: { stamina: 8 }
+  classAttitudes:
+    FOCUS: { name: 수업 집중, academics: 1.5, scaleAcademicsBySchoolLife: true, stamina: -2, schoolAffinity: 0, schoolEventChance: 0 }
+    DOZE: { name: 졸기, academics: -0.5, scaleAcademicsBySchoolLife: false, stamina: 8, schoolAffinity: 0, schoolEventChance: 0 }
+    TEACHER: { name: 선생님과 대화, academics: 0.5, scaleAcademicsBySchoolLife: false, stamina: 0, schoolAffinity: 3, schoolEventChance: 0.3 }
+    FRIENDS: { name: 친구와 어울리기, academics: 0, scaleAcademicsBySchoolLife: false, stamina: 0, schoolAffinity: 3, schoolEventChance: 0.3 }
+  # 학교생활 배율 = base + 학교생활 관계도 / divisor
+  schoolLifeMultiplier: { base: 1.0, divisor: 200 }
+  nightRecovery: 14
+  sundayExtraRecovery: 20
+  sunday:
+    rest: { stamina: 25, condition: 1 }
+    partTime: { money: 30000, stamina: -10 }
+    meet: { affinity: 5, targets: [coach, teammate, family] }
+
+stamina:
+  # 최대치 = maxBase + (기초체력 - fitnessPivot) / fitnessDivisor
+  maxBase: 100
+  fitnessPivot: 50
+  fitnessDivisor: 2
+  injuryRiskBelow: 30
+  injuryChancePerSlot: 0.03
+  injuryWeeks: [1, 2, 3, 4]
+  exhaustionBelow: 10
+  exhaustionCoachDelta: -2
+
+condition:
+  start: 2
+  levels:
+    - { name: 매우 나쁨, training: 0.90, match: -10 }
+    - { name: 나쁨, training: 0.95, match: -5 }
+    - { name: 보통, training: 1.00, match: 0 }
+    - { name: 좋음, training: 1.05, match: 5 }
+    - { name: 매우 좋음, training: 1.10, match: 10 }
+  saturdayDropBelowStamina: 30
+
+academics:
+  start: 50
+  min: 0
+  max: 100
+  remedialGain: 1
+  checks:
+    - { at: { month: 7, week: 3 }, below: 30, remedialWeeks: [ { month: 9, week: 1 }, { month: 9, week: 2 } ] }
+    # 다음 학기(2학년 3월)는 1년 범위 밖이므로 점검 결과만 기록한다
+    - { at: { month: 12, week: 4 }, below: 30, remedialWeeks: [] }
+
+relationships:
+  min: 0
+  max: 100
+  start: { coach: 30, teammate: 30, family: 50, school: 30 }
+
+resources:
+  money: 0
+  reputation: 0
+
+match:
+  minutes: 80
+  selection:
+    coachWeight: 0.5
+    statWeight: 0.5
+    starterMargin: -5
+    subMargin: -20
+  teamGoals: { base: 1.2, perStrength: 0.03, min: 0.2, max: 3.5 }
+  sceneCount:
+    starter: { min: 4, max: 5 }
+    sub: { min: 1, max: 2 }
+    bench: { min: 0, max: 0 }
+  staminaCost: { starter: -12, sub: -5, bench: 0 }
+  judgement:
+    goalBase: 25
+    otherBase: 50
+    statFactor: 0.8
+    min: 5
+    max: 95
+  passive:
+    pivot: 50
+    divisor: 5
+    min: -10
+    max: 10
+    totalMin: -10
+    totalMax: 10
+    clutchFromMinute: 60
+    clutchMaxGoalDiff: 1
+    growthPerMatch: 0.5
+  takeOnBonus: 15
+  pressingGoalChance: 0.3
+  penaltyWinChance: 0.5
+  rating: { base: 6.0, goal: 1.0, assist: 0.7, otherSuccess: 0.3, failure: -0.2, min: 3.0, max: 10.0 }
+  coachFeedback: { goodFrom: 7.0, goodDelta: 2, badBelow: 5.5, badDelta: -2 }
+  points: { win: 3, draw: 1, loss: 0 }
+
+reputation:
+  gradeMultiplier: 0.5
+  # 위에서부터 처음 맞는 구간 하나만 적용
+  rating:
+    - { from: 8.0, value: 6 }
+    - { from: 7.0, value: 3 }
+  goal: 2
+  assist: 1
+  # 춘계배에서 해당 단계에 오르면 지급 (남은 팀 수 기준)
+  cupStages:
+    - { teamsLeft: 8, name: 8강, value: 10 }
+    - { teamsLeft: 4, name: 4강, value: 20 }
+    - { teamsLeft: 1, name: 우승, value: 40 }
+
+events:
+  sundayChance: 0.7
+  cooldownWeeks: 4

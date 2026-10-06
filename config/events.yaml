@@ -1,0 +1,314 @@
+# 이벤트 30편: 감독 8, 동료 8, 가족 5, 학교생활 6, 공통 3
+# trigger 의 minWeek / maxWeek 는 1~48 주차 (1주차 = 3월 1주).
+# 효과 크기: 능력치 ±0.5~2, 관계도 ±2~6, 체력 ±5~20, 학업 성취 ±1~5, 컨디션 ±1
+# 학교생활(school) 이벤트는 오전 수업에서 '선생님과 대화' 또는 '친구와 어울리기'를 고르면 30% 확률로도 나온다.
+
+events:
+  # ---------------- 감독 (coach) ----------------
+  - id: coach_001
+    axis: coach
+    title: 감독과의 첫 면담
+    body: 입학하고 며칠 뒤, 감독이 사무실로 불렀다. "네가 파워형 공격수라던 그 신입이지? 이 팀에서 뭘 하고 싶나?"
+    trigger: { maxWeek: 4 }
+    choices:
+      - { text: "주전 경쟁에서 이기겠다고 말한다", effects: { coachAffinity: 4, stat: { momentum: 0.5 } } }
+      - { text: "팀에 필요한 역할부터 묻는다", effects: { coachAffinity: 3, stat: { teamwork: 1 } } }
+      - { text: "긴장해서 짧게 대답하고 나온다", effects: { coachAffinity: 2, stat: { mental: 0.5 } } }
+    setFlags: [met_coach]
+    once: true
+
+  - id: coach_002
+    axis: coach
+    title: 훈련 태도 지적
+    body: 다리가 무거워 몸이 따라 주지 않던 날, 감독이 호루라기를 불어 훈련을 멈췄다. "너, 오늘 정신 어디 두고 왔어?"
+    trigger: { staminaMax: 45 }
+    choices:
+      - { text: "변명 없이 사과하고 더 뛴다", effects: { coachAffinity: 3, stamina: -10 } }
+      - { text: "몸 상태가 안 좋다고 솔직히 말한다", effects: { coachAffinity: -2, stamina: 10 } }
+    once: false
+
+  - id: coach_003
+    axis: coach
+    title: 슈팅 특훈 제안
+    body: 훈련이 끝나고 감독이 공 바구니를 들고 왔다. "시간 있으면 슈팅 좀 더 차고 가라. 내가 봐 줄게."
+    trigger: { requiresFlags: [met_coach], coachAffinityMin: 40 }
+    choices:
+      - { text: "남아서 특훈을 받는다", effects: { stat: { shotPower: 1.5, finishing: 1 }, stamina: -15, coachAffinity: 2 } }
+      - { text: "오늘은 회복이 먼저라고 정중히 사양한다", effects: { coachAffinity: -2, stamina: 5 } }
+    once: false
+
+  - id: coach_004
+    axis: coach
+    title: 벤치 통보
+    body: 경기 전날 명단에 네 이름이 없었다. 감독은 지나가며 "다음에 보자"라고만 했다.
+    trigger: { minWeek: 8, lastMatchRole: bench, coachAffinityMax: 40 }
+    choices:
+      - { text: "이유를 묻는다", effects: { coachAffinity: 4, condition: -1 } }
+      - { text: "말없이 개인 훈련을 한다", effects: { stat: { shotPower: 1.5 }, stamina: -15 } }
+    setFlags: [benched_once]
+    once: true
+
+  - id: coach_005
+    axis: coach
+    title: 후반 교체 투입
+    body: 이번에도 후반 교체였다. 경기 뒤 감독이 말했다. "짧게 뛰어도 보여 줄 건 보여 줘야 한다."
+    trigger: { lastMatchRole: sub, minWeek: 3 }
+    choices:
+      - { text: "선발로 뛰고 싶다고 솔직히 말한다", effects: { coachAffinity: -2, stat: { momentum: 1 } } }
+      - { text: "교체로도 결과를 내겠다고 한다", effects: { coachAffinity: 3, stat: { clutch: 1 } } }
+    once: false
+
+  - id: coach_006
+    axis: coach
+    title: 선발 명단에 오르다
+    body: 화이트보드의 선발 명단 맨 위에 네 이름이 적혀 있었다. 동기들이 어깨를 툭 친다.
+    trigger: { lastMatchRole: starter }
+    choices:
+      - { text: "들뜨지 않고 다음 경기를 준비한다", effects: { stat: { composure: 1 }, coachAffinity: 2 } }
+      - { text: "동기들에게 매점에서 한턱낸다", effects: { teammateAffinity: 4, money: -20000 } }
+    once: false
+
+  - id: coach_007
+    axis: coach
+    title: 재활 면담
+    body: 감독이 재활 중인 너를 불렀다. "서두르면 더 길어진다. 몸부터 제대로 만들어."
+    trigger: { injured: true }
+    choices:
+      - { text: "재활 일정을 철저히 지킨다", effects: { coachAffinity: 3, stamina: 10 } }
+      - { text: "빨리 복귀하고 싶다고 조른다", effects: { coachAffinity: -2, condition: 1 } }
+    once: false
+
+  - id: coach_008
+    axis: coach
+    title: 방학 합숙 훈련
+    body: 방학 합숙 마지막 날, 감독이 언덕 왕복 달리기를 지시했다. 다들 숨이 턱까지 찼다.
+    trigger: { vacation: true }
+    choices:
+      - { text: "끝까지 버틴다", effects: { stat: { fitness: 1.5 }, stamina: -20, coachAffinity: 4 } }
+      - { text: "요령껏 페이스를 조절한다", effects: { stat: { workRate: 0.5 }, stamina: -5, coachAffinity: -2 } }
+    once: false
+
+  # ---------------- 동료 (teammate) ----------------
+  - id: teammate_001
+    axis: teammate
+    title: 선배의 심부름
+    body: 3학년 선배가 훈련 전에 음료수 박스를 가져오라고 했다. 운동장 반대편 창고까지는 꽤 멀다.
+    trigger: { maxWeek: 16 }
+    choices:
+      - { text: "군말 없이 다녀온다", effects: { teammateAffinity: 3, stamina: -5 } }
+      - { text: "훈련 준비를 핑계로 동기에게 넘긴다", effects: { teammateAffinity: -3, stamina: 5 } }
+    once: false
+
+  - id: teammate_002
+    axis: teammate
+    title: 동기와 야간 자율훈련
+    body: 동기 미드필더가 "패스 몇 개만 더 맞춰 보자"며 공을 굴려 왔다. 조명이 꺼지기까지 30분 남았다.
+    choices:
+      - { text: "같이 남아서 연계 훈련을 한다", effects: { stat: { passing: 1, teamwork: 1 }, stamina: -10, teammateAffinity: 3 } }
+      - { text: "오늘은 먼저 들어간다", effects: { stamina: 5, teammateAffinity: -2 } }
+    once: false
+
+  - id: teammate_003
+    axis: teammate
+    title: 포지션 경쟁자
+    body: 같은 공격수 자리를 노리는 동기가 있다. 훈련 중에도 서로 눈치를 보는 일이 잦아졌다.
+    trigger: { minWeek: 6 }
+    choices:
+      - { text: "선의의 경쟁을 하자고 손을 내민다", effects: { teammateAffinity: 4, stat: { mental: 1 } } }
+      - { text: "보란 듯이 신경전을 벌인다", effects: { stat: { momentum: 1.5 }, teammateAffinity: -4 } }
+      - { text: "상대의 마무리 비결을 물어본다", effects: { stat: { finishing: 1 }, teammateAffinity: 2 } }
+    setFlags: [rival_met]
+    once: true
+
+  - id: teammate_004
+    axis: teammate
+    title: 골 세리머니 약속
+    body: 다음 경기도 선발이다. 윙어 동기가 "네가 넣으면 둘이 그거 하자"며 세리머니를 연습하자고 한다.
+    trigger: { lastMatchRole: starter }
+    choices:
+      - { text: "좋다, 같이 연습한다", effects: { teammateAffinity: 3, stat: { momentum: 0.5 } } }
+      - { text: "골부터 넣고 생각하자며 슈팅 연습을 한다", effects: { stat: { composure: 1 }, stamina: -5 } }
+    once: false
+
+  - id: teammate_005
+    axis: teammate
+    title: 단체 PC방 번개
+    body: 훈련이 일찍 끝난 날, 부원 단톡방에 "PC방 갈 사람"이 올라왔다. 벌써 다섯 명이 손을 들었다.
+    trigger: { staminaMin: 40 }
+    choices:
+      - { text: "같이 간다", effects: { teammateAffinity: 4, money: -10000, stamina: -5 } }
+      - { text: "집에서 쉰다", effects: { stamina: 10, teammateAffinity: -2 } }
+    once: false
+
+  - id: teammate_006
+    axis: teammate
+    title: 주장의 호출
+    body: 주장이 라커룸 뒤로 너를 불렀다. "요즘 너 때문에 분위기가 좀 그렇다는 말이 있다."
+    trigger: { teammateAffinityMax: 30 }
+    choices:
+      - { text: "팀 분위기를 해쳤다면 사과한다", effects: { teammateAffinity: 5, condition: -1 } }
+      - { text: "억울하다고 따진다", effects: { teammateAffinity: -3, stat: { mental: 1 } } }
+    once: false
+
+  - id: teammate_007
+    axis: teammate
+    title: 동료의 부상
+    body: 연습 경기에서 주전 공격수 선배가 발목을 다쳤다. 몇 주는 못 뛴다고 한다.
+    trigger: { minWeek: 10 }
+    choices:
+      - { text: "병문안을 가서 응원한다", effects: { teammateAffinity: 5, stamina: -5 } }
+      - { text: "그 자리를 노리고 훈련량을 늘린다", effects: { coachAffinity: 2, teammateAffinity: -4, stamina: -10 } }
+    once: true
+
+  - id: teammate_008
+    axis: teammate
+    title: 선배의 킥 노하우
+    body: 프리킥 전담 선배가 "디딤발 위치만 바꿔도 공이 달라진다"며 시범을 보여 주겠다고 한다.
+    trigger: { teammateAffinityMin: 45 }
+    choices:
+      - { text: "해가 질 때까지 배운다", effects: { stat: { kickPower: 1.5 }, stamina: -10 } }
+      - { text: "다음에 배우겠다고 한다", effects: { teammateAffinity: -2 } }
+    once: true
+
+  # ---------------- 가족 (family) ----------------
+  - id: family_001
+    axis: family
+    title: 엄마의 보양식
+    body: 주말에 집에 오니 식탁 위에 삼계탕이 올라와 있었다. "요즘 얼굴이 반쪽이 됐네."
+    choices:
+      - { text: "맛있게 먹고 푹 잔다", effects: { stamina: 15, familyAffinity: 3 } }
+      - { text: "몇 숟갈 뜨고 운동하러 나간다", effects: { stat: { fitness: 0.5 }, familyAffinity: -2 } }
+    once: false
+
+  - id: family_002
+    axis: family
+    title: 성적표가 도착했다
+    body: 집으로 성적표가 왔다. 아버지가 말없이 성적표를 식탁에 올려 두었다.
+    trigger: { academicsMax: 40 }
+    choices:
+      - { text: "공부도 챙기겠다고 약속한다", effects: { familyAffinity: 3, academics: 3, stamina: -5 } }
+      - { text: "지금은 축구에 집중해야 한다고 설득한다", effects: { familyAffinity: -4, stat: { mental: 1 } } }
+    once: false
+
+  - id: family_003
+    axis: family
+    title: 용돈 봉투
+    body: 할머니가 "우리 손주 축구화 사라"며 봉투를 손에 쥐여 주셨다.
+    trigger: { familyAffinityMin: 50 }
+    choices:
+      - { text: "감사히 받는다", effects: { money: 30000, familyAffinity: 2 } }
+      - { text: "마음만 받겠다며 사양한다", effects: { familyAffinity: 4 } }
+    once: false
+
+  - id: family_004
+    axis: family
+    title: 아버지와 프로 경기 관람
+    body: 아버지가 프로 경기 표 두 장을 구해 왔다. "공격수 움직임 잘 봐 둬라."
+    trigger: { minWeek: 5 }
+    choices:
+      - { text: "같이 가서 공격수 움직임을 메모한다", effects: { stat: { offTheBall: 1 }, familyAffinity: 4, stamina: -5 } }
+      - { text: "피곤하다며 집에서 쉰다", effects: { stamina: 10, familyAffinity: -3 } }
+    once: false
+
+  - id: family_005
+    axis: family
+    title: 진로 이야기
+    body: 늦은 밤, 엄마가 조심스럽게 물었다. "축구, 정말 끝까지 할 거니?"
+    trigger: { minWeek: 30 }
+    choices:
+      - { text: "끝까지 가 보겠다고 말한다", effects: { stat: { mental: 1.5 }, familyAffinity: -2 } }
+      - { text: "공부도 놓지 않겠다고 한다", effects: { academics: 4, familyAffinity: 4 } }
+      - { text: "아직 잘 모르겠다고 털어놓는다", effects: { condition: -1, familyAffinity: 2 } }
+    once: true
+
+  # ---------------- 학교생활 (school) ----------------
+  - id: school_001
+    axis: school
+    title: 쪽지 시험
+    body: 수학 선생님이 "다음 시간에 쪽지 시험 본다"고 예고했다. 오늘 밤에도 훈련이 있다.
+    trigger: { vacation: false }
+    choices:
+      - { text: "잠을 줄여 벼락치기한다", effects: { academics: 3, stamina: -10 } }
+      - { text: "포기하고 푹 잔다", effects: { academics: -2, stamina: 10 } }
+    once: false
+
+  - id: school_002
+    axis: school
+    title: 담임 선생님 상담
+    body: 담임 선생님이 상담실로 불렀다. "운동하는 건 좋은데, 졸업은 해야지?"
+    trigger: { vacation: false }
+    choices:
+      - { text: "운동과 공부를 병행할 계획을 같이 세운다", effects: { academics: 2, schoolAffinity: 4 } }
+      - { text: "지금은 운동이 우선이라고 말씀드린다", effects: { schoolAffinity: -3, coachAffinity: 2 } }
+    once: false
+
+  - id: school_003
+    axis: school
+    title: 체육대회 반 대표
+    body: 체육대회 계주 반 대표가 필요하다며 반 친구들이 일제히 너를 쳐다본다.
+    trigger: { minWeek: 8, maxWeek: 12 }
+    choices:
+      - { text: "반 대표로 뛴다", effects: { stat: { speed: 1 }, schoolAffinity: 5, stamina: -10 } }
+      - { text: "부상 위험 때문에 빠진다", effects: { schoolAffinity: -3, stamina: 5 } }
+    once: true
+
+  - id: school_004
+    axis: school
+    title: 친구의 노트 필기
+    body: 짝꿍이 "너 어제 졸았지?"라며 정리한 노트를 내밀었다.
+    trigger: { schoolAffinityMin: 35, vacation: false }
+    choices:
+      - { text: "고맙다며 노트를 빌린다", effects: { academics: 3, schoolAffinity: 2 } }
+      - { text: "혼자 해 보겠다고 한다", effects: { academics: 1 } }
+    once: false
+
+  - id: school_005
+    axis: school
+    title: 수행평가 조별 과제
+    body: 조별 과제 마감이 내일이다. 조원들이 네 몫의 자료를 기다리고 있다.
+    trigger: { vacation: false }
+    choices:
+      - { text: "밤을 새워 내 몫을 끝낸다", effects: { academics: 4, stamina: -15 } }
+      - { text: "운동 핑계로 미룬다", effects: { schoolAffinity: -4, academics: -2 } }
+      - { text: "조원들과 일을 다시 나눈다", effects: { stat: { teamwork: 0.5 }, academics: 2, schoolAffinity: 2 } }
+    once: false
+
+  - id: school_006
+    axis: school
+    title: 축제 무대 섭외
+    body: 학교 축제 실행위원이 "축구부도 장기자랑 한 팀 나와 달라"고 찾아왔다.
+    trigger: { minWeek: 30, maxWeek: 36 }
+    choices:
+      - { text: "축구부 친구들과 무대에 선다", effects: { schoolAffinity: 6, teammateAffinity: 3, stamina: -10 } }
+      - { text: "훈련 때문에 사양한다", effects: { coachAffinity: 2, schoolAffinity: -2 } }
+    once: true
+
+  # ---------------- 공통 (common) ----------------
+  - id: common_001
+    axis: common
+    title: 동네 공원 길거리 축구
+    body: 공원 풋살장에서 동네 형들이 한 명이 모자란다며 손짓한다.
+    choices:
+      - { text: "끼어서 같이 뛴다", effects: { stat: { dribbling: 1 }, stamina: -10, condition: 1 } }
+      - { text: "벤치에서 구경만 한다", effects: { stamina: 5 } }
+    once: false
+
+  - id: common_002
+    axis: common
+    title: 몸살 기운
+    body: 아침부터 으슬으슬 춥고 목이 칼칼하다.
+    trigger: { staminaMax: 50 }
+    choices:
+      - { text: "약을 먹고 일찍 잔다", effects: { stamina: 15 } }
+      - { text: "참고 평소처럼 운동한다", effects: { stat: { fitness: 0.5 }, condition: -1, stamina: -10 } }
+    once: false
+
+  - id: common_003
+    axis: common
+    title: 지역 신문 인터뷰
+    body: 지역 신문 기자가 "요즘 눈에 띄는 1학년 공격수"라며 짧은 인터뷰를 요청했다.
+    trigger: { reputationMin: 5 }
+    choices:
+      - { text: "팀 덕분이라며 겸손하게 답한다", effects: { reputation: 2, coachAffinity: 2 } }
+      - { text: "전국 무대를 노린다고 포부를 밝힌다", effects: { reputation: 3, stat: { momentum: 1 }, teammateAffinity: -2 } }
+    once: true

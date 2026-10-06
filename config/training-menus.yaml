@@ -1,0 +1,17 @@
+# 훈련 메뉴. 메뉴 하나가 stats 의 능력치를 각각 성장시킨다.
+# 성장량(능력치마다) = 기준값 × growthMultiplier × 유형 보정 × 컨디션 배율 × 감쇠
+# unlock: 해금 조건 (이번 버전은 모두 비워 둠 = 처음부터 사용 가능)
+menus:
+  - { id: shooting, name: 슈팅, stats: [finishing, composure], growthMultiplier: 1.0, unlock: null }
+  - { id: power, name: 파워, stats: [shotPower, kickPower], growthMultiplier: 1.0, unlock: null }
+  - { id: aerial, name: 제공권, stats: [heading, offTheBall], growthMultiplier: 1.0, unlock: null }
+  - { id: breakthrough, name: 돌파, stats: [dribbling, speed], growthMultiplier: 1.0, unlock: null }
+  - { id: link, name: 연계, stats: [passing, firstTouch], growthMultiplier: 1.0, unlock: null }
+  - { id: pressing, name: 압박, stats: [workRate, teamwork], growthMultiplier: 1.0, unlock: null }
+  - { id: fitness, name: 체력, stats: [fitness], growthMultiplier: 2.0, unlock: null }
+
+# 판 시작 시 칸별 기본 메뉴
+defaults:
+  MORNING: shooting
+  AFTERNOON: shooting
+  NIGHT: shooting
