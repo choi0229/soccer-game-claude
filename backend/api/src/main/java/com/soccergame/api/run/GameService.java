@@ -31,25 +31,31 @@ public class GameService {
     public record Loaded(UUID runId, GameState state) {
     }
 
+    /** schoolId 가 null 이면 설정 파일의 기본 학교 (학교를 고르기 전과 똑같이 동작한다) */
     @Transactional
-    public Loaded create(Long requestedSeed) {
-        long seed = requestedSeed != null ? requestedSeed : seeds.nextLong() >>> 12;
+    public Loaded create(Long requestedSeed, Integer schoolId) {
+        long seed = requestedSeed != null ? requestedSeed : randomSeed();
+        GameState state = engine.newGame(seed, schoolId);
         UUID id = UUID.randomUUID();
-        repository.createRun(id, seed);
-        return new Loaded(id, engine.newGame(seed));
+        repository.createRun(id, seed, schoolId);
+        return new Loaded(id, state);
+    }
+
+    public long randomSeed() {
+        return seeds.nextLong() >>> 12;
     }
 
     @Transactional(readOnly = true)
     public Loaded load(UUID id) {
-        long seed = repository.findSeed(id).orElseThrow(() -> new RunNotFoundException(id));
-        return new Loaded(id, replay(seed, repository.actions(id)));
+        RunRepository.RunInfo run = repository.findRun(id).orElseThrow(() -> new RunNotFoundException(id));
+        return new Loaded(id, replay(run, repository.actions(id)));
     }
 
     @Transactional
     public ActionResult act(UUID id, ActionRequest request) {
-        long seed = repository.lockRun(id).orElseThrow(() -> new RunNotFoundException(id));
+        RunRepository.RunInfo run = repository.lockRun(id).orElseThrow(() -> new RunNotFoundException(id));
         List<RunRepository.StoredAction> log = repository.actions(id);
-        GameState state = replay(seed, log);
+        GameState state = replay(run, log);
         ActionOutcome outcome = engine.apply(state, request.toAction());
         repository.appendAction(id, log.size() + 1, request.type().name(), json.writeValueAsString(request));
         return new ActionResult(new Loaded(id, state), outcome);
@@ -60,13 +66,13 @@ public class GameService {
 
     @Transactional(readOnly = true)
     public List<RunRepository.StoredAction> actions(UUID id) {
-        repository.findSeed(id).orElseThrow(() -> new RunNotFoundException(id));
+        repository.findRun(id).orElseThrow(() -> new RunNotFoundException(id));
         return repository.actions(id);
     }
 
-    /** 시드와 순번별 요청만으로 판을 처음부터 다시 만든다. */
-    public GameState replay(long seed, List<RunRepository.StoredAction> log) {
-        GameState state = engine.newGame(seed);
+    /** 생성 기록(시드, 학교)과 순번별 요청만으로 판을 처음부터 다시 만든다. */
+    public GameState replay(RunRepository.RunInfo run, List<RunRepository.StoredAction> log) {
+        GameState state = engine.newGame(run.seed(), run.schoolId());
         int expected = 1;
         for (RunRepository.StoredAction stored : log) {
             if (stored.seq() != expected++) {

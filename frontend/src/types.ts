@@ -133,7 +133,15 @@ export interface BondView {
   effect: string; tierEffects: string[];
 }
 
-export interface Meta { position: string; archetype: string; weeksPerYear: number; startLabel: string; endLabel: string }
+export interface Meta {
+  position: string; archetype: string; weeksPerYear: number; startLabel: string; endLabel: string;
+  leagueMatches: number; tournaments: string[];
+}
+
+export interface SchoolList {
+  seed: number; randomSeed: boolean; defaultSchoolId: number;
+  types: { key: string; name: string; strength: number; schools: { id: number; name: string; region: string }[] }[];
+}
 
 export type ActionRequest =
   | { type: 'DAY'; dawn?: string; classAttitude?: string; menus?: Partial<Record<TrainingSlot, string>> }

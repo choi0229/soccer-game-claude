@@ -32,10 +32,20 @@ final class GameSetup {
         this.competitions = competitions;
     }
 
-    GameState create(long seed) {
+    /**
+     * playerSchoolId 가 null 이면 설정 파일의 기본 학교. 지정해도 난수 사용 순서는 같다
+     * (학교 생성 뒤 플레이어 학교만 바꾼다).
+     */
+    GameState create(long seed, Integer playerSchoolId) {
         Rng rng = RandomStreams.gameStream(seed);
         GameState s = new GameState(seed, rng, calendar.weeksPerYear());
         createSchools(s, rng);
+        if (playerSchoolId != null) {
+            if (playerSchoolId < 1 || playerSchoolId > s.schools.size()) {
+                throw new IllegalArgumentException("없는 학교입니다: " + playerSchoolId);
+            }
+            s.playerSchoolId = playerSchoolId;
+        }
         createPlayer(s, rng);
         for (Schools.RegionDef region : config.schools().regions()) {
             League league = League.create(

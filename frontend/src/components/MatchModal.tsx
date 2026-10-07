@@ -1,9 +1,15 @@
+import { useEffect, useRef } from 'react';
 import type { ClutchChoiceView, GameView, MatchRecord, TimelineEntry } from '../types';
 import { useUiStore } from '../store';
 import { f1, resultLabel, roleLabel } from '../format';
 import Modal from './Modal';
 
 const MY_SCENE = new Set(['SCENE_SUCCESS', 'SCENE_FAIL', 'CLUTCH']);
+const LINE_CLASS: Record<string, string> = {
+  KICKOFF: 'marker', HALF_TIME: 'marker', FULL_TIME: 'marker', PENALTIES: 'marker',
+  TEAM_GOAL: 'goal-for', OPPONENT_GOAL: 'goal-against',
+  SCENE_SUCCESS: 'success', SCENE_FAIL: 'fail', CLUTCH: 'clutch',
+};
 
 interface Props {
   view: GameView;
@@ -41,48 +47,49 @@ export default function MatchModal({ view, pending, onClutch }: Props) {
   };
   const skip = () => setShown(entries.length);
 
-  const header = live
-    ? `${live.competition} ${live.roundLabel} · ${live.home ? '홈' : '원정'} vs ${live.opponentName}`
-    : `${record!.competitionName} ${record!.roundLabel} · ${record!.home ? '홈' : '원정'} vs ${record!.opponentName}`;
-  const sub = live
-    ? `${live.dateLabel} · 상대 전력 ${live.opponentStrength} · 핵심 수비 ${live.opponentDefender} · 출전: ${live.role}`
-    : `${record!.dateLabel} · 상대 전력 ${record!.opponentStrength} · 핵심 수비 ${record!.opponentDefender} · 출전: ${roleLabel[record!.role]}`;
+  const competition = live ? `${live.competition} ${live.roundLabel}` : `${record!.competitionName} ${record!.roundLabel}`;
+  const role = live ? live.role : roleLabel[record!.role];
+  const opponent = live ? live.opponentName : record!.opponentName;
+  const meta = live
+    ? `${live.dateLabel} · ${live.home ? '홈' : '원정'} · 상대 ${live.opponentType} · 전력 ${live.opponentStrength} · 핵심 수비 ${live.opponentDefender}`
+    : `${record!.dateLabel} · ${record!.home ? '홈' : '원정'} · 상대 전력 ${record!.opponentStrength} · 핵심 수비 ${record!.opponentDefender}`;
+  const our = finished ? record!.ourScore : current?.ourScore ?? 0;
+  const their = finished ? record!.theirScore : current?.theirScore ?? 0;
 
   return (
-    <Modal title={header}>
-      <h2>{header}</h2>
-      <div className="muted small">{sub}</div>
-      <div className="scoreboard">
-        {finished ? `${record!.ourScore} : ${record!.theirScore}` : `${current?.ourScore ?? 0} : ${current?.theirScore ?? 0}`}
-        {finished && <span className="result"> {resultLabel(record!.result, record!.penaltyWin)}</span>}
-        {!finished && shown > 0 && <span className="muted small"> ({current?.minute}분)</span>}
+    <Modal title={competition}>
+      <div className="eyebrow">{competition} · {role}</div>
+      <h2>{finished ? '경기 결과' : '오늘의 경기'}</h2>
+      <div className="score">
+        <span>{view.school.name}</span>
+        <strong>{our} : {their}</strong>
+        <span>{opponent}</span>
       </div>
-      <ol className="timeline">
-        {shown === 0 && <li className="muted">킥오프 전</li>}
+      <p className="score-sub">
+        {finished ? resultLabel(record!.result, record!.penaltyWin) : shown > 0 ? `${current?.minute}분` : '킥오프 전'} · {meta}
+      </p>
+
+      <div className="commentary" aria-live="polite">
+        {shown === 0 && <p className="marker">중계를 확인하며 장면을 하나씩 넘겨 보세요.</p>}
         {visible.map((e, i) => (
-          <li key={i} className={e.kind}>
-            <span className="minute">{e.minute}'</span> {e.text} <span className="muted">({e.ourScore}-{e.theirScore})</span>
+          <p key={i} className={LINE_CLASS[e.kind] ?? ''}>
+            <span className="minute">{e.minute}'</span>{e.text} <span className="tiny">({e.ourScore}-{e.theirScore})</span>
             {e.probability !== null && (
-              <div className="prob">
-                성공 확률 <b>{f1(e.probability)}%</b>
-                {e.modifiers && <span className="muted"> · {e.modifiers.join(', ')}</span>}
-              </div>
+              <small>성공 확률 {f1(e.probability)}%{e.modifiers && ` · ${e.modifiers.join(', ')}`}</small>
             )}
-          </li>
+          </p>
         ))}
-      </ol>
+      </div>
 
       {awaitingClutch && live && <ClutchPanel live={live} pending={pending} onChoose={onClutch} />}
 
-      {!allShown && (
-        <div className="row">
-          <button className="primary" onClick={next}>다음 장면</button>
-          <button onClick={skip}>건너뛰기</button>
-        </div>
-      )}
-
       {finished && <MatchSummary record={record!} />}
-      {finished && <button className="primary" onClick={clear}>닫기</button>}
+
+      <div className="modal-actions">
+        {!allShown && <button className="secondary" onClick={skip}>중계 건너뛰기</button>}
+        {!allShown && <button className="primary" onClick={next}>다음 장면 →</button>}
+        {finished && <button className="primary" onClick={clear}>경기 확인 완료</button>}
+      </div>
     </Modal>
   );
 }
@@ -93,20 +100,28 @@ function ClutchPanel({ live, pending, onChoose }: {
   onChoose: (momentId: string, index: number) => void;
 }) {
   const c = live.clutch;
+  const ref = useRef<HTMLDivElement>(null);
+  // 승부처 차례가 오면 선택지가 보이도록 내려 준다
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [c.momentId]);
   return (
-    <div className="clutch">
-      <div className="clutch-title">승부처 · {c.minute}분 · {c.title}</div>
+    <div className="clutch-panel" ref={ref}>
+      <div className="eyebrow">Clutch moment · {c.minute}분</div>
+      <h3>{c.title}</h3>
       <p>{c.situation}</p>
-      <ol className="choices">
+      <ol className="event-choices">
         {c.choices.map((o: ClutchChoiceView) => (
           <li key={o.index}>
             <button disabled={pending} onClick={() => onChoose(c.momentId, o.index)}>
-              <span className="choice-no">{o.index + 1}.</span> <span className={`style-tag ${o.style}`}>{o.styleLabel}</span> {o.text}
+              <span className="no">0{o.index + 1}</span>
+              <span className={`style-tag ${o.style}`}>{o.styleLabel}</span>
+              <span className="choice-text">{o.text}</span>
               {o.trait && <span className="trait-badge">{o.trait} +1</span>}
-              <div className="small">
+              <span className="choice-detail">
                 성공 확률 <b>{f1(o.probability)}%</b> ({o.stats.join('·')}) · {o.reward} · 실패 시 평점 {o.failRating}
-              </div>
-              <div className="muted tiny">{o.modifiers.join(', ')}</div>
+                <br /><span className="tiny">{o.modifiers.join(', ')}</span>
+              </span>
             </button>
           </li>
         ))}
@@ -117,21 +132,19 @@ function ClutchPanel({ live, pending, onChoose }: {
 
 function MatchSummary({ record }: { record: MatchRecord }) {
   return (
-    <div className="match-footer">
-      {record.rating !== null ? (
-        <>
-          평점 <b>{f1(record.rating)}</b> · 골 {record.playerGoals} · 도움 {record.playerAssists}
-          {record.pressGoals > 0 && ` · 압박 득점 ${record.pressGoals}`}
-          {record.clutchTeamGoals > 0 && ` · 승부처 팀 득점 ${record.clutchTeamGoals}`} · 평판 +{f1(record.reputationGained)}
-          {record.passiveGrowth && record.passiveGrowthAmount !== null && ` · ${record.passiveGrowth} +${record.passiveGrowthAmount}`}
-        </>
-      ) : (
-        <span className="muted">{roleLabel[record.role]} — 평점 없음</span>
-      )}
-      <div className="muted small">
+    <>
+      <div className="match-numbers">
+        <span>골<b>{record.playerGoals}</b></span>
+        <span>도움<b>{record.playerAssists}</b></span>
+        <span>평점<b>{record.rating === null ? '—' : f1(record.rating)}</b></span>
+        <span>평판<b>+{f1(record.reputationGained)}</b></span>
+      </div>
+      <p className="score-sub">
+        {record.rating === null && `${roleLabel[record.role]} — 출전하지 않았습니다. `}
         팀 득점 {record.teamGoals} + 내 골 {record.playerGoals} + 도움 {record.playerAssists} + 압박 {record.pressGoals}
         {record.clutchTeamGoals > 0 && ` + 승부처 ${record.clutchTeamGoals}`} = {record.ourScore}
-      </div>
-    </div>
+        {record.passiveGrowth && record.passiveGrowthAmount !== null && ` · ${record.passiveGrowth} +${record.passiveGrowthAmount}`}
+      </p>
+    </>
   );
 }

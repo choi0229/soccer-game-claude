@@ -1,4 +1,4 @@
-import type { ActionOutcome, ActionRequest, GameView, Meta } from './types';
+import type { ActionOutcome, ActionRequest, GameView, Meta, SchoolList } from './types';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -26,8 +26,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   meta: () => request<Meta>('/api/meta'),
-  createRun: (seed?: number) =>
-    request<GameView>('/api/runs', { method: 'POST', body: JSON.stringify(seed === undefined ? {} : { seed }) }),
+  /** 학교 이름은 시드로 정해진다. seed 가 없으면 서버가 무작위 시드를 정해 함께 돌려준다 */
+  schools: (seed?: number) => request<SchoolList>(seed === undefined ? '/api/schools' : `/api/schools?seed=${seed}`),
+  /** schoolId 가 null 이면 설정 파일의 기본 학교 */
+  createRun: (seed: number, schoolId: number | null) =>
+    request<GameView>('/api/runs', { method: 'POST', body: JSON.stringify({ seed, schoolId }) }),
   getRun: (runId: string) => request<GameView>(`/api/runs/${runId}`),
   act: (runId: string, action: ActionRequest) =>
     request<{ view: GameView; outcome: ActionOutcome }>(`/api/runs/${runId}/actions`, {

@@ -32,7 +32,7 @@ class GameServiceTest {
 
     /** 화면에서 하듯 요청을 보내며 1년을 진행한다. 선택은 주차에 따라 바꾼다. */
     private UUID playYear(long seed) {
-        UUID id = service.create(seed).runId();
+        UUID id = service.create(seed, null).runId();
         int step = 0;
         while (true) {
             GameState s = service.load(id).state();
@@ -73,7 +73,7 @@ class GameServiceTest {
 
     @Test
     void actionsAreAppendedWithIncreasingSeq() {
-        UUID id = service.create(1L).runId();
+        UUID id = service.create(1L, null).runId();
         service.act(id, day(DawnChoice.SLEEP, null, Map.of()));
         // 훈련·수업 이벤트가 나왔으면 먼저 고른다
         GameState s = service.load(id).state();
@@ -92,7 +92,7 @@ class GameServiceTest {
 
     @Test
     void rejectedActionIsNotRecorded() {
-        UUID id = service.create(1L).runId();
+        UUID id = service.create(1L, null).runId();
         assertThatThrownBy(() -> service.act(id,
                 new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.REST, null, null, null, null)))
                 .isInstanceOf(InvalidActionException.class);
@@ -101,7 +101,7 @@ class GameServiceTest {
 
     @Test
     void replayFromLogMatchesLiveState() {
-        UUID id = service.create(77L).runId();
+        UUID id = service.create(77L, null).runId();
         GameService.ActionResult last = null;
         for (int i = 0; i < 12; i++) {
             GameState s = service.load(id).state();
@@ -115,7 +115,21 @@ class GameServiceTest {
             };
             last = service.act(id, r);
         }
-        GameState replayed = service.replay(77L, repo.actions(id));
+        GameState replayed = service.replay(new RunRepository.RunInfo(77L, null), repo.actions(id));
         assertThat(StateFingerprint.of(replayed)).isEqualTo(StateFingerprint.of(last.loaded().state()));
+    }
+
+    @Test
+    void chosenSchoolIsRecordedAndReplayed() {
+        UUID id = service.create(5L, 1).runId();
+        assertThat(repo.runs.get(id).schoolId()).isEqualTo(1);
+        service.act(id, day(DawnChoice.SLEEP, null, Map.of()));
+        GameState loaded = service.load(id).state();
+        assertThat(loaded.playerSchoolId).isEqualTo(1);
+        assertThat(StateFingerprint.of(service.replay(new RunRepository.RunInfo(5L, 1), repo.actions(id))))
+                .isEqualTo(StateFingerprint.of(loaded));
+        // 학교를 고르지 않은 판은 이전과 같다
+        UUID plain = service.create(5L, null).runId();
+        assertThat(service.load(plain).state().playerSchoolId).isEqualTo(engine.newGame(5L).playerSchoolId);
     }
 }

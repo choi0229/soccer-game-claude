@@ -69,7 +69,12 @@ public final class GameEngine {
     }
 
     public GameState newGame(long seed) {
-        return setup.create(seed);
+        return newGame(seed, null);
+    }
+
+    /** playerSchoolId 가 null 이면 설정 파일의 기본 학교 */
+    public GameState newGame(long seed, Integer playerSchoolId) {
+        return setup.create(seed, playerSchoolId);
     }
 
     public Phase phase(GameState s) {

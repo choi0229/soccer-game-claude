@@ -26,7 +26,8 @@ public class RunController {
         this.mapper = mapper;
     }
 
-    public record CreateRunRequest(Long seed) {
+    /** schoolId 가 없으면 설정 파일의 기본 학교 */
+    public record CreateRunRequest(Long seed, Integer schoolId) {
     }
 
     public record ActionResponse(GameView view, ActionOutcome outcome) {
@@ -35,7 +36,8 @@ public class RunController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public GameView create(@RequestBody(required = false) CreateRunRequest request) {
-        GameService.Loaded loaded = service.create(request == null ? null : request.seed());
+        GameService.Loaded loaded = service.create(request == null ? null : request.seed(),
+                request == null ? null : request.schoolId());
         return mapper.toView(loaded.runId(), loaded.state());
     }
 

@@ -49,13 +49,14 @@ ASSUMPTIONS.md          명세에 없어서 정한 규칙
 
 - 시드 하나에서 난수 흐름 두 개를 만듭니다: 게임 판정용(`RandomStreams.gameStream`)과 시뮬레이터 선택용(`choiceStream`). 게임 판정은 선택용 흐름을 쓰지 않습니다.
 - 플레이어의 선택은 `run_actions` 테이블에 판마다 1부터 1씩 늘어나는 순번으로 추가만 됩니다. UPDATE, DELETE, TRUNCATE 는 DB 트리거가 막습니다.
-- 서버는 상태를 저장하지 않고, 요청마다 시드와 기록을 재생해 상태를 만든 뒤 새 행동을 적용합니다. 화면 상단의 '지문'은 상태 해시라서, 같은 시드와 같은 선택 순서면 같은 값이 나옵니다.
+- 서버는 상태를 저장하지 않고, 요청마다 생성 기록(시드, 고른 학교)과 행동 기록을 재생해 상태를 만든 뒤 새 행동을 적용합니다. 화면 상단의 '지문'은 상태 해시라서, 같은 시드와 같은 선택 순서면 같은 값이 나옵니다.
 
 ### API
 
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
-| POST | `/api/runs` | 새 판. 본문 `{ "seed": 42 }` (생략하면 무작위) |
+| GET | `/api/schools?seed=42` | 그 시드의 학교 32개교(유형별)와 기본 학교. 시드를 빼면 무작위 시드를 정해 함께 돌려준다 |
+| POST | `/api/runs` | 새 판. 본문 `{ "seed": 42, "schoolId": 7 }` (seed 생략 시 무작위, schoolId 생략 시 기본 학교) |
 | GET | `/api/runs/{id}` | 현재 화면 상태 |
 | POST | `/api/runs/{id}/actions` | 행동 1개. `DAY` / `SUNDAY` / `EVENT_CHOICE` / `CLUTCH_CHOICE` |
 | GET | `/api/runs/{id}/actions` | 행동 기록 (순번, 종류, 요청 JSON) |

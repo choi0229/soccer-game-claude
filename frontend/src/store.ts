@@ -15,6 +15,12 @@ interface UiState {
   runId: string | null;
   setRunId: (id: string | null) => void;
 
+  /** 시작 화면 입력: 시드 문자열(비우면 무작위)과 고른 학교 (null 이면 기본 학교) */
+  startSeed: string;
+  startSchoolId: number | null;
+  setStartSeed: (v: string) => void;
+  setStartSchoolId: (v: number | null) => void;
+
   /** 아직 보내지 않은 오늘의 선택 변경 */
   draft: DayDraft;
   setDraftDawn: (v: string) => void;
@@ -50,6 +56,11 @@ export const useUiStore = create<UiState>()(
     (set) => ({
       runId: null,
       setRunId: (runId) => set({ runId, draft: emptyDraft(), playback: null }),
+
+      startSeed: '',
+      startSchoolId: null,
+      setStartSeed: (startSeed) => set({ startSeed }),
+      setStartSchoolId: (startSchoolId) => set({ startSchoolId }),
 
       draft: emptyDraft(),
       setDraftDawn: (dawn) => set((s) => ({ draft: { ...s.draft, dawn } })),

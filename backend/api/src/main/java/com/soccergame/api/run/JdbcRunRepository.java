@@ -16,18 +16,20 @@ public class JdbcRunRepository implements RunRepository {
     }
 
     @Override
-    public void createRun(UUID id, long seed) {
-        jdbc.sql("insert into runs (id, seed) values (?, ?)").params(id, seed).update();
+    public void createRun(UUID id, long seed, Integer schoolId) {
+        jdbc.sql("insert into runs (id, seed, school_id) values (?, ?, ?)").params(id, seed, schoolId).update();
     }
 
     @Override
-    public Optional<Long> lockRun(UUID id) {
-        return jdbc.sql("select seed from runs where id = ? for update").param(id).query(Long.class).optional();
+    public Optional<RunInfo> lockRun(UUID id) {
+        return jdbc.sql("select seed, school_id from runs where id = ? for update").param(id)
+                .query((rs, n) -> new RunInfo(rs.getLong("seed"), (Integer) rs.getObject("school_id"))).optional();
     }
 
     @Override
-    public Optional<Long> findSeed(UUID id) {
-        return jdbc.sql("select seed from runs where id = ?").param(id).query(Long.class).optional();
+    public Optional<RunInfo> findRun(UUID id) {
+        return jdbc.sql("select seed, school_id from runs where id = ?").param(id)
+                .query((rs, n) -> new RunInfo(rs.getLong("seed"), (Integer) rs.getObject("school_id"))).optional();
     }
 
     @Override

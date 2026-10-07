@@ -5,50 +5,59 @@ import { useUiStore } from '../store';
 export default function SeasonSummaryView({ view }: { view: GameView }) {
   const s = view.summary;
   const setRunId = useUiStore((st) => st.setRunId);
+  const roles = Object.entries(s.roles).filter(([, n]) => n > 0).map(([r, n]) => `${roleLabel[r]} ${n}`).join(' · ');
+  const cells: [string, string][] = [
+    ['출전', `${s.appearances}경기`],
+    ['득점', `${s.goals}골`],
+    ['도움', `${s.assists}개`],
+    ['평균 평점', s.averageRating === null ? '-' : f1(s.averageRating)],
+    ['학업 성취', f1(s.academics)],
+    ['평판', f1(s.reputation)],
+  ];
   return (
-    <div className="box summary">
-      <h2>시즌 요약 — 1학년 1년 종료</h2>
+    <section className="panel season">
+      <div className="eyebrow">Season complete</div>
+      <h2>{view.date.weeksPerYear}주, 첫 시즌을 마쳤습니다.</h2>
+      <p>{view.school.name} · 주말리그 최종 {s.leagueRank}위 · {s.wins}승 {s.draws}무 {s.losses}패 · {roles}</p>
       <div className="summary-grid">
-        <div>
-          <h3>경기 기록</h3>
-          <ul>
-            <li>{s.wins}승 {s.draws}무 {s.losses}패 (플레이어 학교 경기 {s.wins + s.draws + s.losses}경기)</li>
-            <li>
-              {Object.entries(s.roles).filter(([, n]) => n > 0).map(([r, n]) => `${roleLabel[r]} ${n}`).join(' · ')}
-            </li>
-            <li>출전 {s.appearances}경기 · 골 {s.goals} · 도움 {s.assists} · 평균 평점 {s.averageRating === null ? '-' : f1(s.averageRating)}</li>
-            <li>주말리그 최종 {s.leagueRank}위</li>
-            {s.tournaments.map((t) => (
-              <li key={t.key}>{t.name}: {t.text}{t.matches > 0 && ` (${t.matches}경기)`}</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h3>학업과 평판</h3>
-          <ul>
-            <li>학업 성취 {f1(s.academics)}</li>
-            <li>나머지 공부 {s.makeupWeeks}주 (실제 {s.makeupDays}일)</li>
-            <li>평판 {f1(s.reputation)} · 돈 {won(s.money)}</li>
-            <li>부상 {s.injuries}회 · 훈련 제외 {s.exclusions}회 · 이벤트 {s.events}편</li>
-          </ul>
-        </div>
+        {cells.map(([label, value]) => (
+          <div key={label}><span>{label}</span><strong>{value}</strong></div>
+        ))}
       </div>
+
+      <h3>대회별 성적</h3>
+      <ul className="summary-list">
+        <li><span>주말리그</span><b>최종 {s.leagueRank}위</b></li>
+        {s.tournaments.map((t) => (
+          <li key={t.key}><span>{t.name} <span className="tiny">{t.period}</span></span><b>{t.text}{t.matches > 0 && ` · ${t.matches}경기`}</b></li>
+        ))}
+      </ul>
+
+      <h3>학교생활과 몸</h3>
+      <ul className="summary-list">
+        <li><span>나머지 공부</span><b>{s.makeupWeeks}주 (실제 {s.makeupDays}일)</b></li>
+        <li><span>돈</span><b>{won(s.money)}</b></li>
+        <li><span>부상 · 훈련 제외 · 이벤트</span><b>{s.injuries}회 · {s.exclusions}회 · {s.events}편</b></li>
+      </ul>
+
       <h3>능력치 변화</h3>
-      <table className="stats wide">
-        <thead><tr><th>능력치</th><th>시작</th><th>종료</th><th>변화</th><th>등급</th></tr></thead>
-        <tbody>
-          {s.stats.map((st) => (
-            <tr key={st.key} className={st.passive ? 'passive' : ''}>
-              <td>{st.name}{st.primary && ' ★'}{st.passive && <span className="muted small"> 패시브</span>}</td>
-              <td className="num">{f1(st.start)}</td>
-              <td className="num">{f1(st.end)}</td>
-              <td className="num">{signed(st.end - st.start)}</td>
-              <td>{st.startGrade} → <b>{st.endGrade}</b></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <button className="primary" onClick={() => setRunId(null)}>새 판 시작하기</button>
-    </div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>능력치</th><th>시작</th><th>종료</th><th>변화</th><th>등급</th></tr></thead>
+          <tbody>
+            {s.stats.map((st) => (
+              <tr key={st.key} className={st.primary ? 'my-school' : ''}>
+                <td>{st.name}{st.primary ? ' ★' : ''}{st.passive && <span className="tiny"> 패시브</span>}</td>
+                <td>{f1(st.start)}</td>
+                <td>{f1(st.end)}</td>
+                <td>{signed(st.end - st.start)}</td>
+                <td>{st.startGrade} → <b>{st.endGrade}</b></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button className="secondary" onClick={() => setRunId(null)}>새 시즌 시작</button>
+    </section>
   );
 }

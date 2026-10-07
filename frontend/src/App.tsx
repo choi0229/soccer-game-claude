@@ -4,6 +4,7 @@ import { useRun } from './queries';
 import { useUiStore } from './store';
 import StartScreen from './components/StartScreen';
 import GameScreen from './components/GameScreen';
+import Masthead from './components/Masthead';
 
 export default function App() {
   const runId = useUiStore((s) => s.runId);
@@ -21,14 +22,17 @@ export default function App() {
     return <StartScreen />;
   }
   if (run.isPending) {
-    return <div className="center">불러오는 중…</div>;
+    return <><Masthead /><p className="loading">시즌 기록을 불러오는 중…</p></>;
   }
   if (run.isError) {
     return (
-      <div className="center">
-        <p>판을 불러오지 못했습니다: {run.error.message}</p>
-        <button onClick={() => setRunId(null)}>시작 화면으로</button>
-      </div>
+      <>
+        <Masthead />
+        <div className="loading">
+          <p className="error">판을 불러오지 못했습니다: {run.error.message}</p>
+          <button className="secondary" onClick={() => setRunId(null)}>시작 화면</button>
+        </div>
+      </>
     );
   }
   return <GameScreen view={run.data} />;

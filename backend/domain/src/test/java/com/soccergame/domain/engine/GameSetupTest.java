@@ -21,7 +21,7 @@ class GameSetupTest {
 
     @Test
     void createsThirtyTwoSchoolsInFourBalancedRegions() {
-        GameState s = setup.create(1);
+        GameState s = setup.create(1, null);
         assertThat(s.schools).hasSize(32);
         assertThat(s.schools.stream().map(School::name).distinct()).hasSize(32);
         Map<String, Long> byType = s.schools.stream().collect(Collectors.groupingBy(School::typeKey, Collectors.counting()));
@@ -36,7 +36,7 @@ class GameSetupTest {
 
     @Test
     void playerSchoolIsConfiguredType() {
-        GameState s = setup.create(1);
+        GameState s = setup.create(1, null);
         assertThat(s.playerSchool().typeKey()).isEqualTo("DARK_HORSE");
         assertThat(s.playerSchool().strength()).isEqualTo(40);
         assertThat(s.playerSchool().region()).isEqualTo(1);
@@ -45,7 +45,7 @@ class GameSetupTest {
     @Test
     void startingStatsFollowRanges() {
         for (long seed = 0; seed < 200; seed++) {
-            GameState s = setup.create(seed);
+            GameState s = setup.create(seed, null);
             for (String key : config.trainedStatKeys()) {
                 double v = s.stats.get(key);
                 if (config.isPrimary(key)) {
@@ -62,7 +62,7 @@ class GameSetupTest {
 
     @Test
     void startingResources() {
-        GameState s = setup.create(5);
+        GameState s = setup.create(5, null);
         double fitness = s.stats.get("fitness");
         assertThat(s.stamina).isEqualTo(100 + (fitness - 50) / 2);
         assertThat(s.condition).isEqualTo(2);
@@ -79,8 +79,8 @@ class GameSetupTest {
 
     @Test
     void sameSeedSameSetup() {
-        GameState a = setup.create(99);
-        GameState b = setup.create(99);
+        GameState a = setup.create(99, null);
+        GameState b = setup.create(99, null);
         assertThat(a.schools).isEqualTo(b.schools);
         assertThat(a.stats.asMap()).isEqualTo(b.stats.asMap());
         assertThat(a.cups.get("spring").alive()).isEqualTo(b.cups.get("spring").alive());
@@ -89,5 +89,24 @@ class GameSetupTest {
         assertThat(a.league).isSameAs(a.leagues.get(a.playerSchool().region()));
         assertThat(a.cups).containsOnlyKeys("spring");
         assertThat(a.rng.state()).isEqualTo(b.rng.state());
+    }
+
+    @Test
+    void chosenSchoolKeepsEverythingElse() {
+        GameState base = setup.create(42, null);
+        int other = base.schools.stream().filter(x -> x.typeKey().equals("PRO")).findFirst().orElseThrow().id();
+        GameState chosen = setup.create(42, other);
+        assertThat(chosen.playerSchoolId).isEqualTo(other);
+        assertThat(chosen.playerSchool().strength()).isEqualTo(80);
+        // 학교를 바꿔도 학교 이름·능력치 시작값·대진·난수 상태는 같다
+        assertThat(chosen.schools).isEqualTo(base.schools);
+        assertThat(chosen.stats.asMap()).isEqualTo(base.stats.asMap());
+        assertThat(chosen.cups.get("spring").alive()).isEqualTo(base.cups.get("spring").alive());
+        assertThat(chosen.rng.state()).isEqualTo(base.rng.state());
+        assertThat(chosen.league).isSameAs(chosen.leagues.get(chosen.playerSchool().region()));
+        // 기본 학교를 직접 지정하면 지정하지 않은 것과 같다
+        assertThat(setup.create(42, base.playerSchoolId).playerSchoolId).isEqualTo(base.playerSchoolId);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> setup.create(42, 99))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

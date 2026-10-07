@@ -9,22 +9,22 @@ import java.util.UUID;
 
 /** 테스트용 저장소. 추가 전용 규칙(순번 연속, 중복 금지)을 그대로 지킨다. */
 class InMemoryRunRepository implements RunRepository {
-    final Map<UUID, Long> runs = new HashMap<>();
+    final Map<UUID, RunInfo> runs = new HashMap<>();
     final Map<UUID, List<StoredAction>> actions = new HashMap<>();
 
     @Override
-    public void createRun(UUID id, long seed) {
-        runs.put(id, seed);
+    public void createRun(UUID id, long seed, Integer schoolId) {
+        runs.put(id, new RunInfo(seed, schoolId));
         actions.put(id, new ArrayList<>());
     }
 
     @Override
-    public Optional<Long> lockRun(UUID id) {
-        return findSeed(id);
+    public Optional<RunInfo> lockRun(UUID id) {
+        return findRun(id);
     }
 
     @Override
-    public Optional<Long> findSeed(UUID id) {
+    public Optional<RunInfo> findRun(UUID id) {
         return Optional.ofNullable(runs.get(id));
     }
 

@@ -16,6 +16,15 @@ export function useMeta() {
   return useQuery({ queryKey: ['meta'], queryFn: api.meta, staleTime: Infinity });
 }
 
+/** 시작 화면의 학교 목록. 시드를 비우면 무작위 시드 하나를 받아 그 시드로 고정한다 */
+export function useSchools(seed: number | undefined) {
+  return useQuery({
+    queryKey: ['schools', seed ?? 'random'],
+    queryFn: () => api.schools(seed),
+    staleTime: Infinity,
+  });
+}
+
 export function useRun(runId: string | null) {
   return useQuery({
     queryKey: runKey(runId ?? ''),
@@ -39,7 +48,7 @@ export function useCreateRun() {
   const queryClient = useQueryClient();
   const setRunId = useUiStore((s) => s.setRunId);
   return useMutation({
-    mutationFn: (seed?: number) => api.createRun(seed),
+    mutationFn: ({ seed, schoolId }: { seed: number; schoolId: number | null }) => api.createRun(seed, schoolId),
     onSuccess: (view) => {
       queryClient.setQueryData(runKey(view.runId), view);
       setRunId(view.runId);
