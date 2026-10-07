@@ -4,9 +4,11 @@ import com.soccergame.domain.config.ConfigLoader;
 import com.soccergame.domain.config.GameConfig;
 import com.soccergame.domain.engine.GameEngine;
 import com.soccergame.domain.engine.GameState;
+import com.soccergame.domain.engine.StateFingerprint;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,6 +25,21 @@ class SimulatorTest {
             assertThat(a.stats.asMap()).isEqualTo(b.stats.asMap());
             assertThat(a.matches).isEqualTo(b.matches);
             assertThat(a.eventHistory).isEqualTo(b.eventHistory);
+        }
+    }
+
+    @Test
+    void seasonLogPlaysTheSameGameAsTheRunnerAndCoversEveryWeek() {
+        GameConfig typed = config.withPlayerSchoolType("STRONG");
+        for (Strategy strategy : List.of(new Strategies.Balanced(), new Strategies.TrainingFocus())) {
+            SeasonLog log = new SeasonLog(typed);
+            SeasonLog.Run run = log.play(1, strategy);
+            GameState expected = new YearRunner(new GameEngine(typed)).run(1, strategy);
+            assertThat(StateFingerprint.of(run.state)).isEqualTo(StateFingerprint.of(expected));
+            assertThat(run.weeks).hasSize(config.rules().calendar().weeksPerYear());
+            assertThat(run.weeks.stream().mapToInt(w -> w.events.size()).sum())
+                    .isEqualTo(expected.eventHistory.size());
+            assertThat(log.render(run)).contains("## 1.", "## 2.", "## 3.", "## 4.", "| 48 | 2월 4주 |");
         }
     }
 

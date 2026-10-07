@@ -18,6 +18,8 @@ docker compose up --build
 
 ```sh
 docker compose run --rm simulator --runs 1000 --out /out/simulation-report.md
+# 한 판 시즌 기록 문서 3개 (다크호스+균형, 다크호스+훈련 위주, 강호+균형, 같은 시드)
+docker compose run --rm simulator --seed 1 --season-log /out/docs/season-log
 ```
 
 전략 3종(무작위, 훈련 위주, 균형)을 각각 1,000판씩 돌려 결과 표를 출력하고, 저장소 루트의 `simulation-report.md` 에도 저장합니다.
