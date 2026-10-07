@@ -13,10 +13,10 @@ final class EngineTestSupport {
     private EngineTestSupport() {
     }
 
-    /** 경기도 방학도 없는 학기 중 월요일(10월 1주)로 옮긴 새 판 */
+    /** 경기도 방학도 없는 학기 중 월요일(11월 1주, 대회 기간 밖)로 옮긴 새 판 */
     static GameState plainSemesterMonday(long seed) {
         GameState s = ENGINE.newGame(seed);
-        s.week = ENGINE.calendar().weekIndex(10, 1);
+        s.week = ENGINE.calendar().weekIndex(11, 1);
         s.day = Weekday.MON;
         return s;
     }

@@ -39,7 +39,7 @@ interface UiState {
   clearPlayback: () => void;
 
   /** 오른쪽 패널 탭 */
-  sideTab: 'stats' | 'growth' | 'league' | 'matches';
+  sideTab: 'stats' | 'growth' | 'schedule' | 'league' | 'matches';
   setSideTab: (t: UiState['sideTab']) => void;
 }
 

@@ -5,7 +5,7 @@
 # condition: half FIRST(40분 이하) / SECOND, score LEADING / TIED / TRAILING
 # choices:
 #   style: AGGRESSIVE(위험 큼, 기준값 낮음, 보상 큼) / BALANCED / SAFE(기준값 높음, 보상 작음)
-#   기준값: 과감하게 30, 침착하게 45, 안전하게 60~65 / 실패 평점: 과감하게·침착하게 -0.2, 안전하게 -0.1
+#   기준값: 과감하게 30, 침착하게 45, 안전하게 60~65 / 실패 평점: 과감하게 -0.2, 침착하게·안전하게 -0.1
 #   stats: 판정 능력치 1~2개 (2개면 평균), base: 기준값
 #   성공 확률(%) = base + (능력치 - 상대 전력) × 0.8 + 컨디션 + 패시브 보정, 5~95 (기존 장면 판정식과 같음)
 #   success.outcome: GOAL(골) / ASSIST(도움, 팀 득점 +1) / EXTRA_SHOT(extraScene 슈팅 장면 1개 추가)
@@ -32,7 +32,7 @@ moments:
       - { text: 그대로 수비 사이를 파고들어 슈팅한다, style: AGGRESSIVE, stats: [dribbling, finishing], base: 30,
           success: { outcome: GOAL }, failRating: -0.2, trait: competitor }
       - { text: 동료와 원투 패스로 수비 뒤를 노린다, style: BALANCED, stats: [passing, offTheBall], base: 45,
-          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.2, trait: teamPlayer }
+          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.1, trait: teamPlayer }
       - { text: 측면 동료에게 안전하게 내준다, style: SAFE, stats: [passing], base: 62,
           success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.15 }, failRating: -0.1, trait: modelStudent }
 
@@ -44,7 +44,7 @@ moments:
       - { text: 몸을 던져 다이빙 헤더를 시도한다, style: AGGRESSIVE, stats: [heading], base: 30,
           success: { outcome: GOAL }, failRating: -0.2, trait: competitor }
       - { text: 머리로 뒤쪽 동료에게 떨궈 준다, style: BALANCED, stats: [heading, teamwork], base: 45,
-          success: { outcome: ASSIST }, failRating: -0.2, trait: teamPlayer }
+          success: { outcome: ASSIST }, failRating: -0.1, trait: teamPlayer }
       - { text: 세컨드 볼에 대비해 자리를 지킨다, style: SAFE, stats: [workRate], base: 65,
           success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.15 }, failRating: -0.1, trait: hardWorker }
 
@@ -68,7 +68,7 @@ moments:
       - { text: 직접 강하게 때린다, style: AGGRESSIVE, stats: [kickPower, shotPower], base: 30,
           success: { outcome: GOAL }, failRating: -0.2, trait: competitor }
       - { text: 짧게 내주고 박스 안으로 파고든다, style: BALANCED, stats: [passing, offTheBall], base: 45,
-          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.2, trait: hardWorker }
+          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.1, trait: hardWorker }
       - { text: 문전으로 낮게 감아 올린다, style: SAFE, stats: [kickPower], base: 60,
           success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.2 }, failRating: -0.1, trait: teamPlayer }
 
@@ -81,7 +81,7 @@ moments:
       - { text: 골키퍼 키를 넘기는 칩슛을 시도한다, style: AGGRESSIVE, stats: [composure, finishing], base: 30,
           success: { outcome: GOAL }, failRating: -0.2, trait: competitor }
       - { text: 반대편으로 쇄도하는 동료에게 컷백한다, style: BALANCED, stats: [passing, teamwork], base: 45,
-          success: { outcome: ASSIST }, failRating: -0.2, trait: teamPlayer }
+          success: { outcome: ASSIST }, failRating: -0.1, trait: teamPlayer }
       - { text: 몸싸움으로 버텨 프리킥을 얻어 낸다, style: SAFE, stats: [dribbling], base: 60,
           success: { outcome: EXTRA_SHOT, extraScene: SET_PIECE }, failRating: -0.1, trait: modelStudent }
 
@@ -93,7 +93,7 @@ moments:
       - { text: 떨어지는 공을 그대로 발리로 때린다, style: AGGRESSIVE, stats: [shotPower, composure], base: 30,
           success: { outcome: GOAL }, failRating: -0.2, trait: competitor }
       - { text: 가슴으로 받아 놓고 다음 동작을 노린다, style: BALANCED, stats: [firstTouch], base: 45,
-          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.2, trait: hardWorker }
+          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.1, trait: hardWorker }
       - { text: 머리로 2선 동료에게 떨궈 준다, style: SAFE, stats: [heading, teamwork], base: 62,
           success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.2 }, failRating: -0.1, trait: teamPlayer }
 
@@ -106,7 +106,7 @@ moments:
       - { text: 그대로 중거리 슈팅을 때린다, style: AGGRESSIVE, stats: [shotPower], base: 30,
           success: { outcome: GOAL }, failRating: -0.2, trait: competitor }
       - { text: 측면으로 벌려 크로스를 기다린다, style: BALANCED, stats: [workRate, offTheBall], base: 45,
-          success: { outcome: EXTRA_SHOT, extraScene: CROSS_HEADER }, failRating: -0.2, trait: hardWorker }
+          success: { outcome: EXTRA_SHOT, extraScene: CROSS_HEADER }, failRating: -0.1, trait: hardWorker }
 
   - id: clutch_08
     title: 문전 혼전
@@ -116,7 +116,7 @@ moments:
       - { text: 돌아서며 터닝슛을 한다, style: AGGRESSIVE, stats: [finishing, composure], base: 30,
           success: { outcome: GOAL }, failRating: -0.2, trait: competitor }
       - { text: 더 좋은 위치의 동료에게 내준다, style: BALANCED, stats: [passing], base: 45,
-          success: { outcome: ASSIST }, failRating: -0.2, trait: teamPlayer }
+          success: { outcome: ASSIST }, failRating: -0.1, trait: teamPlayer }
       - { text: 공을 지키며 파울을 얻어 낸다, style: SAFE, stats: [firstTouch, dribbling], base: 60,
           success: { outcome: EXTRA_SHOT, extraScene: SET_PIECE }, failRating: -0.1, trait: hardWorker }
 
@@ -139,6 +139,6 @@ moments:
       - { text: 골키퍼에게 전력으로 달려든다, style: AGGRESSIVE, stats: [speed, workRate], base: 30,
           success: { outcome: GOAL }, failRating: -0.2, trait: hardWorker }
       - { text: 패스 길목을 막아 공을 끊는다, style: BALANCED, stats: [workRate, teamwork], base: 45,
-          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.2, trait: teamPlayer }
+          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.1, trait: teamPlayer }
       - { text: 무리하지 않고 수비 위치로 돌아간다, style: SAFE, stats: [teamwork], base: 65,
           success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.1 }, failRating: -0.1, trait: modelStudent }

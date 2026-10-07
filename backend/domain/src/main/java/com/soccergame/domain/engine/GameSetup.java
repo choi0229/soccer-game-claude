@@ -1,7 +1,6 @@
 package com.soccergame.domain.engine;
 
 import com.soccergame.domain.calendar.GameCalendar;
-import com.soccergame.domain.competition.Cup;
 import com.soccergame.domain.competition.League;
 import com.soccergame.domain.config.GameConfig;
 import com.soccergame.domain.config.Rules;
@@ -17,17 +16,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 새 판을 만든다. 게임 판정 난수를 쓰는 순서: 학교 이름 → 수비수 유형 → 능력치 시작값 → 리그 대진 → 토너먼트 추첨.
+ * 새 판을 만든다. 게임 판정 난수를 쓰는 순서: 학교 이름 → 수비수 유형 → 능력치 시작값 → 권역별 리그 대진
+ * → 첫 주에 시작하는 토너먼트 추첨 (다른 토너먼트는 첫 경기 주가 시작할 때 추첨).
  */
 final class GameSetup {
     private final GameConfig config;
     private final GameCalendar calendar;
     private final Resources resources;
+    private final Competitions competitions;
 
-    GameSetup(GameConfig config, GameCalendar calendar, Resources resources) {
+    GameSetup(GameConfig config, GameCalendar calendar, Resources resources, Competitions competitions) {
         this.config = config;
         this.calendar = calendar;
         this.resources = resources;
+        this.competitions = competitions;
     }
 
     GameState create(long seed) {
@@ -35,18 +37,17 @@ final class GameSetup {
         GameState s = new GameState(seed, rng, calendar.weeksPerYear());
         createSchools(s, rng);
         createPlayer(s, rng);
-        League league = League.create(
-                s.schools.stream().filter(sc -> sc.region() == s.playerSchool().region()).map(School::id).toList(),
-                rng);
-        if (league.roundCount() != calendar.leagueRounds()) {
-            throw new IllegalStateException("리그 라운드 수(" + league.roundCount() + ")가 일정("
-                    + calendar.leagueRounds() + ")과 다릅니다");
+        for (Schools.RegionDef region : config.schools().regions()) {
+            League league = League.create(
+                    s.schools.stream().filter(sc -> sc.region() == region.id()).map(School::id).toList(), rng);
+            if (league.roundCount() != calendar.leagueRounds()) {
+                throw new IllegalStateException("리그 라운드 수(" + league.roundCount() + ")가 일정("
+                        + calendar.leagueRounds() + ")과 다릅니다");
+            }
+            s.leagues.put(region.id(), league);
         }
-        s.league = league;
-        s.cup = Cup.draw(s.schools.stream().map(School::id).toList(), rng);
-        if (s.cup.alive().size() != 1 << calendar.cupRounds()) {
-            throw new IllegalStateException("토너먼트 참가 학교 수가 라운드 수와 맞지 않습니다");
-        }
+        s.league = s.leagues.get(s.playerSchool().region());
+        competitions.drawTournamentsStartingIn(s, 0);
         return s;
     }
 

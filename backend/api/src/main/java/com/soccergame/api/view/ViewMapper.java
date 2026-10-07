@@ -15,6 +15,7 @@ import com.soccergame.domain.engine.PendingEvent;
 import com.soccergame.domain.engine.Phase;
 import com.soccergame.domain.engine.SeasonSummary;
 import com.soccergame.domain.engine.StateFingerprint;
+import com.soccergame.domain.engine.TournamentResult;
 import com.soccergame.domain.match.MatchEngine;
 import com.soccergame.domain.model.Axis;
 import com.soccergame.domain.model.ClassAttitude;
@@ -47,7 +48,8 @@ public class ViewMapper {
     public GameView toView(UUID runId, GameState s) {
         Phase phase = engine.phase(s);
         return new GameView(runId, s.seed, s.actionCount, StateFingerprint.of(s), phase, date(s), school(s),
-                resources(s), stats(s), selections(s), slots(s), matchToday(s), options(s), league(s), cup(s),
+                resources(s), stats(s), selections(s), slots(s), matchToday(s), options(s), league(s), schedule(s),
+                nextMatch(s),
                 traits(s), bonds(s), liveMatch(s), pendingEvent(s),
                 s.lastOutcome, List.copyOf(s.matches), SeasonSummary.of(config, s));
     }
@@ -142,7 +144,8 @@ public class ViewMapper {
             slots.add(new SlotView("MORNING", "오전", "CLASS", "수업", null, null));
         }
         if (match) {
-            String label = calendar.cupName() + " 경기";
+            GameCalendar.TournamentRound today = calendar.tournamentRound(s.week, s.day);
+            String label = (today == null ? "주말리그" : today.tournament().name()) + " 경기";
             slots.add(fixed("AFTERNOON", "오후", label, "오후와 야간 훈련 대신 경기를 치릅니다"));
             slots.add(fixed("NIGHT", "야간", label, null));
             return slots;
@@ -170,9 +173,14 @@ public class ViewMapper {
         String competition;
         String round;
         List<League.Fixture> fixtures;
-        if (calendar.cupRound(s.week, s.day) >= 0) {
-            fixtures = s.cup.currentPairs();
-            competition = calendar.cupName();
+        GameCalendar.TournamentRound tr = calendar.tournamentRound(s.week, s.day);
+        if (tr != null) {
+            var cup = s.cups.get(tr.tournament().key());
+            if (cup == null) {
+                return null;
+            }
+            fixtures = cup.currentPairs();
+            competition = tr.tournament().name();
             round = com.soccergame.domain.competition.Cup.roundName(fixtures.size() * 2);
         } else {
             int r = calendar.leagueRound(s.week);
@@ -205,8 +213,7 @@ public class ViewMapper {
                 o.style().name(), config.clutchMoments().styles().get(o.style()), o.stats(), o.probability(),
                 o.modifiers(), o.reward(), o.failRating(), o.trait() == null ? null : config.trait(o.trait()).name()))
                 .toList();
-        String competition = p.competition == com.soccergame.domain.model.Competition.CUP ? calendar.cupName()
-                : "주말리그";
+        String competition = p.competitionName();
         return new LiveMatchView(competition, p.roundLabel, p.dateLabel, p.opponent.name(), p.opponent.typeName(),
                 p.opponent.strength(), p.defender.name(), p.home, p.role.label(), p.selectionScore,
                 engine.liveTimeline(s), new ClutchView(moment.id(), moment.title(), moment.situation(),
@@ -296,9 +303,75 @@ public class ViewMapper {
         return rows;
     }
 
-    private CupView cup(GameState s) {
-        return new CupView(calendar.cupName(), s.cup.isAlive(s.playerSchoolId), s.cup.roundsPlayed(),
-                List.copyOf(s.cupStagesReached));
+    private List<ScheduleView> schedule(GameState s) {
+        List<ScheduleView> list = new ArrayList<>();
+        int week = Math.min(s.week, calendar.weeksPerYear() - 1);
+        var blocks = config.rules().calendar().league().blocks();
+        String leaguePeriod = calendar.periodLabel(new Rules.Period(blocks.getFirst().from(), blocks.getLast().to()));
+        boolean leagueDone = s.league.roundsPlayed() == s.league.roundCount();
+        String leagueStatus = leagueDone ? "종료" : s.league.roundsPlayed() == 0 ? "예정" : "진행 중";
+        String leagueResult = s.league.roundsPlayed() == 0 ? "-"
+                : (leagueDone ? "최종 " : "현재 ") + s.league.rankOf(s.playerSchoolId) + "위";
+        String leagueNext = null;
+        if (!leagueDone) {
+            int w = calendar.nextLeagueWeek(week);
+            if (w >= 0) {
+                for (League.Fixture f : s.league.fixtures(calendar.leagueRound(w))) {
+                    if (f.homeId() == s.playerSchoolId || f.awayId() == s.playerSchoolId) {
+                        int other = f.homeId() == s.playerSchoolId ? f.awayId() : f.homeId();
+                        leagueNext = calendar.label(w, calendar.leagueMatchDay()) + " vs " + s.school(other).name();
+                    }
+                }
+            }
+        }
+        long leagueMatches = s.matches.stream().filter(m -> m.tournamentKey() == null).count();
+        list.add(new ScheduleView("league", "주말리그", leaguePeriod, leagueStatus, leagueResult, (int) leagueMatches,
+                leagueNext));
+        for (var t : calendar.tournaments()) {
+            var cup = s.cups.get(t.key());
+            String status = cup == null ? "예정" : cup.roundsPlayed() == t.rounds() ? "종료"
+                    : cup.roundsPlayed() == 0 ? "예정" : "진행 중";
+            var result = TournamentResult.of(calendar, s, t);
+            String next = null;
+            if (cup != null && cup.roundsPlayed() < t.rounds() && cup.isAlive(s.playerSchoolId)) {
+                for (League.Fixture f : cup.currentPairs()) {
+                    if (f.homeId() == s.playerSchoolId || f.awayId() == s.playerSchoolId) {
+                        int other = f.homeId() == s.playerSchoolId ? f.awayId() : f.homeId();
+                        next = calendar.dayLabel(t.matchDays().get(cup.roundsPlayed())) + " "
+                                + com.soccergame.domain.competition.Cup.roundName(cup.alive().size())
+                                + " vs " + s.school(other).name();
+                    }
+                }
+            }
+            list.add(new ScheduleView(t.key(), t.name(), calendar.periodLabel(t.period()), status, result.text(),
+                    result.matches(), next));
+        }
+        return list;
+    }
+
+    /** 오늘부터 앞으로 날을 하나씩 보며 플레이어 학교의 다음 경기일을 찾는다 */
+    private NextMatchView nextMatch(GameState s) {
+        if (s.finished) {
+            return null;
+        }
+        int last = calendar.weeksPerYear() * 7;
+        for (int d = s.absoluteDay(); d < last; d++) {
+            int week = d / 7;
+            Weekday day = Weekday.values()[d % 7];
+            GameCalendar.TournamentRound tr = calendar.tournamentRound(week, day);
+            if (tr != null) {
+                var cup = s.cups.get(tr.tournament().key());
+                boolean plays = cup != null
+                        ? cup.isAlive(s.playerSchoolId) && cup.roundsPlayed() <= tr.round()
+                        : tr.tournament().entry().rule() == Rules.EntryRule.ALL;
+                if (plays) {
+                    return new NextMatchView(d - s.absoluteDay(), calendar.label(week, day), tr.tournament().name());
+                }
+            } else if (day == calendar.leagueMatchDay() && calendar.leagueRound(week) > s.league.roundsPlayed()) {
+                return new NextMatchView(d - s.absoluteDay(), calendar.label(week, day), "주말리그");
+            }
+        }
+        return null;
     }
 
     private EventView pendingEvent(GameState s) {

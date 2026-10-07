@@ -17,7 +17,10 @@ export default function SeasonSummaryView({ view }: { view: GameView }) {
               {Object.entries(s.roles).filter(([, n]) => n > 0).map(([r, n]) => `${roleLabel[r]} ${n}`).join(' · ')}
             </li>
             <li>출전 {s.appearances}경기 · 골 {s.goals} · 도움 {s.assists} · 평균 평점 {s.averageRating === null ? '-' : f1(s.averageRating)}</li>
-            <li>주말리그 최종 {s.leagueRank}위 · 춘계배 {s.cupResult}</li>
+            <li>주말리그 최종 {s.leagueRank}위</li>
+            {s.tournaments.map((t) => (
+              <li key={t.key}>{t.name}: {t.text}{t.matches > 0 && ` (${t.matches}경기)`}</li>
+            ))}
           </ul>
         </div>
         <div>

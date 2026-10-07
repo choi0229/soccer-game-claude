@@ -12,7 +12,8 @@ import java.util.UUID;
 /** 화면이 그대로 그리는 판 상태. 모든 수치는 서버가 계산한 값이다. */
 public record GameView(UUID runId, long seed, int actionCount, String fingerprint, Phase phase, DateView date,
                        SchoolView school, ResourcesView resources, List<StatView> stats, SelectionsView selections,
-                       List<SlotView> slots, MatchPreview matchToday, OptionsView options, List<StandingView> league, CupView cup,
+                       List<SlotView> slots, MatchPreview matchToday, OptionsView options, List<StandingView> league, List<ScheduleView> schedule,
+                       NextMatchView nextMatch,
                        List<TraitView> traits, List<BondView> bonds, LiveMatchView liveMatch,
                        EventView pendingEvent, ActionOutcome lastOutcome, List<MatchRecord> matches,
                        SeasonSummary summary) {
@@ -75,7 +76,16 @@ public record GameView(UUID runId, long seed, int actionCount, String fingerprin
                                int points, boolean player) {
     }
 
-    public record CupView(String name, boolean playerAlive, int roundsPlayed, List<String> stagesReached) {
+    /**
+     * 일정 탭 한 줄 (주말리그와 각 토너먼트). status: 예정 / 진행 중 / 종료.
+     * result 는 플레이어 학교 성적, nextMatch 는 다음 경기(날짜와 상대, 없으면 null).
+     */
+    public record ScheduleView(String key, String name, String period, String status, String result,
+                               int matchesPlayed, String nextMatch) {
+    }
+
+    /** 다음 플레이어 학교 경기. days 0 이면 오늘. 남은 경기가 없거나 아직 정해지지 않았으면 null */
+    public record NextMatchView(int days, String dateLabel, String competition) {
     }
 
     public record EventView(String eventId, String axis, String title, String body, String source,

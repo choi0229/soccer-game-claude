@@ -94,6 +94,10 @@ public final class EventEngine {
         if (t.maxWeek() != null && weekNumber > t.maxWeek()) return false;
         if (t.vacation() != null && calendar.isVacation(s.week) != t.vacation()) return false;
         if (t.injured() != null && s.isInjured() != t.injured()) return false;
+        if (t.lastMatchWithinWeeks() != null) {
+            MatchRecord last = s.lastMatch();
+            if (last == null || s.week - last.week() > t.lastMatchWithinWeeks()) return false;
+        }
         if (t.lastMatchResult() != null) {
             MatchRecord last = s.lastMatch();
             if (last == null || t.lastMatchResult().stream().noneMatch(r -> r.code().equals(last.result()))) {

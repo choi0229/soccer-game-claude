@@ -37,7 +37,7 @@ public record Rules(
     // ---- 캘린더 ----
 
     public record CalendarRules(int weeksPerYear, int weeksPerMonth, int startMonth,
-                                List<Vacation> vacations, LeagueSchedule league, CupSchedule cup) {
+                                List<Vacation> vacations, LeagueSchedule league, List<TournamentDef> tournaments) {
     }
 
     public record Vacation(String name, WeekRef from, WeekRef to) {
@@ -49,7 +49,25 @@ public record Rules(
     public record LeagueBlock(int fromRound, int toRound, WeekRef from, WeekRef to) {
     }
 
-    public record CupSchedule(String name, List<CupDay> matchDays) {
+    /** 단판 토너먼트 하나. 참가 학교 수 = 2^rounds, matchDays 는 라운드 순서대로의 경기일 */
+    public record TournamentDef(String key, String name, Period period, Entry entry, int rounds,
+                                List<CupDay> matchDays) {
+        public int teams() {
+            return 1 << rounds;
+        }
+    }
+
+    public record Period(WeekRef from, WeekRef to) {
+    }
+
+    public enum EntryRule {
+        /** 전체 학교 */
+        ALL,
+        /** 권역 리그 최종 순위 상위 topPerRegion 개교씩 */
+        LEAGUE_TOP
+    }
+
+    public record Entry(EntryRule rule, Integer topPerRegion) {
     }
 
     public record CupDay(int month, int week, Weekday day) {

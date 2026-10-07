@@ -14,8 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class GameSetupTest {
     private final GameConfig config = TestConfig.load();
-    private final GameSetup setup = new GameSetup(config, new GameCalendar(config.rules().calendar()),
-            new Resources(config));
+    private final GameCalendar calendar = new GameCalendar(config.rules().calendar());
+    private final GameSetup setup = new GameSetup(config, calendar, new Resources(config),
+            new Competitions(config, calendar, new Resources(config),
+                    new com.soccergame.domain.match.MatchEngine(config)));
 
     @Test
     void createsThirtyTwoSchoolsInFourBalancedRegions() {
@@ -81,7 +83,11 @@ class GameSetupTest {
         GameState b = setup.create(99);
         assertThat(a.schools).isEqualTo(b.schools);
         assertThat(a.stats.asMap()).isEqualTo(b.stats.asMap());
-        assertThat(a.cup.alive()).isEqualTo(b.cup.alive());
+        assertThat(a.cups.get("spring").alive()).isEqualTo(b.cups.get("spring").alive());
+        // 네 권역 리그를 모두 만들고, 첫 주에 시작하는 춘계배만 추첨해 둔다
+        assertThat(a.leagues).hasSize(4);
+        assertThat(a.league).isSameAs(a.leagues.get(a.playerSchool().region()));
+        assertThat(a.cups).containsOnlyKeys("spring");
         assertThat(a.rng.state()).isEqualTo(b.rng.state());
     }
 }

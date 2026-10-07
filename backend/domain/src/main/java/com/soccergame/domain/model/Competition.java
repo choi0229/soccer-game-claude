@@ -1,7 +1,7 @@
 package com.soccergame.domain.model;
 
 public enum Competition {
-    LEAGUE("주말리그"), CUP("춘계배");
+    LEAGUE("주말리그"), CUP("토너먼트");
 
     private final String label;
 

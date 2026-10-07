@@ -22,6 +22,8 @@ public final class PendingMatch {
 
     public final MatchSession session;
     public final Competition competition;
+    /** 토너먼트면 그 대회 (리그면 null) */
+    public final com.soccergame.domain.config.Rules.TournamentDef tournament;
     public final int round;
     public final String roundLabel;
     public final School opponent;
@@ -31,6 +33,10 @@ public final class PendingMatch {
     public final double selectionScore;
     public final String dateLabel;
     final List<League.Fixture> fixtures;
+
+    public String competitionName() {
+        return tournament == null ? competition.label() : tournament.name();
+    }
     final FixtureResult[] results;
     final int playerIndex;
 
@@ -38,11 +44,13 @@ public final class PendingMatch {
     List<LogEntry> log;
     List<String> newEvents;
 
-    PendingMatch(MatchSession session, Competition competition, int round, String roundLabel, School opponent,
+    PendingMatch(MatchSession session, Competition competition,
+                 com.soccergame.domain.config.Rules.TournamentDef tournament, int round, String roundLabel, School opponent,
                  boolean home, DefenderTypeDef defender, MatchRole role, double selectionScore, String dateLabel,
                  List<League.Fixture> fixtures, FixtureResult[] results, int playerIndex) {
         this.session = session;
         this.competition = competition;
+        this.tournament = tournament;
         this.round = round;
         this.roundLabel = roundLabel;
         this.opponent = opponent;

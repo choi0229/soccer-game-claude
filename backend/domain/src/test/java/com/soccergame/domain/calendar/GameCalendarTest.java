@@ -45,13 +45,27 @@ class GameCalendarTest {
     }
 
     @Test
-    void cupSchedule() {
-        assertThat(cal.cupRound(0, Weekday.WED)).isEqualTo(0);
-        assertThat(cal.cupRound(0, Weekday.SAT)).isEqualTo(1);
-        assertThat(cal.cupRound(1, Weekday.TUE)).isEqualTo(2);
-        assertThat(cal.cupRound(1, Weekday.THU)).isEqualTo(3);
-        assertThat(cal.cupRound(1, Weekday.SAT)).isEqualTo(4);
-        assertThat(cal.cupRound(0, Weekday.MON)).isEqualTo(-1);
-        assertThat(cal.cupRounds()).isEqualTo(5);
+    void tournamentSchedule() {
+        assertThat(cal.tournaments()).extracting(t -> t.name())
+                .containsExactly("춘계배", "초여름배", "하계배", "왕중왕전", "추계배");
+        // 춘계배: 1주차 수·토, 2주차 화·목·토
+        assertThat(cal.tournamentRound(0, Weekday.WED).round()).isEqualTo(0);
+        assertThat(cal.tournamentRound(0, Weekday.SAT).round()).isEqualTo(1);
+        assertThat(cal.tournamentRound(1, Weekday.TUE).round()).isEqualTo(2);
+        assertThat(cal.tournamentRound(1, Weekday.THU).round()).isEqualTo(3);
+        assertThat(cal.tournamentRound(1, Weekday.SAT).round()).isEqualTo(4);
+        assertThat(cal.tournamentRound(0, Weekday.MON)).isNull();
+        // 초여름배 5월 2~3주, 하계배 7월 3~4주, 추계배 10월 1~2주
+        assertThat(cal.tournamentRound(cal.weekIndex(5, 2), Weekday.WED).tournament().key()).isEqualTo("earlySummer");
+        assertThat(cal.tournamentRound(cal.weekIndex(7, 4), Weekday.SAT).tournament().key()).isEqualTo("summer");
+        assertThat(cal.tournamentRound(cal.weekIndex(10, 2), Weekday.SAT).round()).isEqualTo(4);
+        // 왕중왕전: 16강, 1주차 수·토, 2주차 수·토
+        var champions = cal.tournamentRound(cal.weekIndex(8, 2), Weekday.WED);
+        assertThat(champions.tournament().key()).isEqualTo("champions");
+        assertThat(champions.round()).isEqualTo(2);
+        assertThat(champions.tournament().teams()).isEqualTo(16);
+        assertThat(cal.tournamentRound(cal.weekIndex(8, 2), Weekday.TUE)).isNull();
+        // 리그는 7월 2주에 끝난다 (전반기 기준)
+        assertThat(cal.leagueEndWeek()).isEqualTo(cal.weekIndex(7, 2));
     }
 }

@@ -13,15 +13,64 @@ calendar:
     blocks:
       - { fromRound: 1, toRound: 7, from: { month: 3, week: 3 }, to: { month: 5, week: 1 } }
       - { fromRound: 8, toRound: 14, from: { month: 5, week: 4 }, to: { month: 7, week: 2 } }
-  cup:
-    name: 춘계배
-    # 라운드 순서대로의 경기일 (32강, 16강, 8강, 4강, 결승)
-    matchDays:
-      - { month: 3, week: 1, day: WED }
-      - { month: 3, week: 1, day: SAT }
-      - { month: 3, week: 2, day: TUE }
-      - { month: 3, week: 2, day: THU }
-      - { month: 3, week: 2, day: SAT }
+  # 토너먼트 목록. 각 대회는 단판 토너먼트이고 대진은 첫 경기 주가 시작할 때 무작위로 추첨한다.
+  # entry: ALL(전체 학교) / LEAGUE_TOP(권역 리그 최종 순위 상위 topPerRegion 개교씩)
+  # rounds: 라운드 수 (참가 학교 = 2^rounds), matchDays: 라운드 순서대로의 경기일
+  tournaments:
+    - key: spring
+      name: 춘계배
+      period: { from: { month: 3, week: 1 }, to: { month: 3, week: 2 } }
+      entry: { rule: ALL }
+      rounds: 5
+      matchDays:
+        - { month: 3, week: 1, day: WED }
+        - { month: 3, week: 1, day: SAT }
+        - { month: 3, week: 2, day: TUE }
+        - { month: 3, week: 2, day: THU }
+        - { month: 3, week: 2, day: SAT }
+    - key: earlySummer
+      name: 초여름배
+      period: { from: { month: 5, week: 2 }, to: { month: 5, week: 3 } }
+      entry: { rule: ALL }
+      rounds: 5
+      matchDays:
+        - { month: 5, week: 2, day: WED }
+        - { month: 5, week: 2, day: SAT }
+        - { month: 5, week: 3, day: TUE }
+        - { month: 5, week: 3, day: THU }
+        - { month: 5, week: 3, day: SAT }
+    - key: summer
+      name: 하계배
+      period: { from: { month: 7, week: 3 }, to: { month: 7, week: 4 } }
+      entry: { rule: ALL }
+      rounds: 5
+      matchDays:
+        - { month: 7, week: 3, day: WED }
+        - { month: 7, week: 3, day: SAT }
+        - { month: 7, week: 4, day: TUE }
+        - { month: 7, week: 4, day: THU }
+        - { month: 7, week: 4, day: SAT }
+    - key: champions
+      name: 왕중왕전
+      period: { from: { month: 8, week: 1 }, to: { month: 8, week: 2 } }
+      entry: { rule: LEAGUE_TOP, topPerRegion: 4 }
+      rounds: 4
+      matchDays:
+        - { month: 8, week: 1, day: WED }
+        - { month: 8, week: 1, day: SAT }
+        - { month: 8, week: 2, day: WED }
+        - { month: 8, week: 2, day: SAT }
+    - key: autumn
+      name: 추계배
+      period: { from: { month: 10, week: 1 }, to: { month: 10, week: 2 } }
+      entry: { rule: ALL }
+      rounds: 5
+      matchDays:
+        - { month: 10, week: 1, day: WED }
+        - { month: 10, week: 1, day: SAT }
+        - { month: 10, week: 2, day: TUE }
+        - { month: 10, week: 2, day: THU }
+        - { month: 10, week: 2, day: SAT }
 
 stats:
   min: 0
@@ -235,7 +284,7 @@ reputation:
     - { from: 7.0, value: 3 }
   goal: 2
   assist: 1
-  # 춘계배에서 해당 단계에 오르면 지급 (남은 팀 수 기준)
+  # 각 토너먼트에서 해당 단계에 오르면 대회마다 따로 지급 (남은 팀 수 기준)
   cupStages:
     - { teamsLeft: 8, name: 8강, value: 10 }
     - { teamsLeft: 4, name: 4강, value: 20 }

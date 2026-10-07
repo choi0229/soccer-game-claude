@@ -27,8 +27,8 @@ class CompetitionsTest {
         assertThat(out.match().competition()).isEqualTo(Competition.CUP);
         assertThat(out.match().roundLabel()).isEqualTo("32강");
         assertThat(out.log()).extracting(LogEntry::slot).containsExactly("새벽", "오전", "오후·야간", "밤");
-        assertThat(s.cup.roundsPlayed()).isEqualTo(1);
-        assertThat(s.cup.alive()).hasSize(16);
+        assertThat(s.cups.get("spring").roundsPlayed()).isEqualTo(1);
+        assertThat(s.cups.get("spring").alive()).hasSize(16);
     }
 
     @Test
@@ -39,7 +39,7 @@ class CompetitionsTest {
                 EngineTestSupport.day(s);
             }
             EngineTestSupport.resolveEvents(s);
-            if (s.cup.isAlive(s.playerSchoolId)) {
+            if (s.cups.get("spring").isAlive(s.playerSchoolId)) {
                 continue;
             }
             EngineTestSupport.day(s); // 목
@@ -50,20 +50,68 @@ class CompetitionsTest {
             assertThat(sat.match()).isNull();
             assertThat(sat.log().getFirst().text()).contains("경기가 없는 토요일");
             // 다른 학교 대진은 계속 진행된다
-            assertThat(s.cup.roundsPlayed()).isEqualTo(2);
+            assertThat(s.cups.get("spring").roundsPlayed()).isEqualTo(2);
             return;
         }
         throw new AssertionError("1라운드 탈락 시드를 찾지 못했습니다");
     }
 
     @Test
-    void cupBracketCompletesWithHalvingRounds() {
+    void everyTournamentBracketCompletes() {
         GameState s = EngineTestSupport.playYear(3);
-        List<Integer> sizes = s.cup.results().stream().map(List::size).toList();
-        assertThat(sizes).containsExactly(16, 8, 4, 2, 1);
-        for (List<FixtureResult> round : s.cup.results()) {
-            assertThat(round).allMatch(r -> r.winnerId() > 0);
+        assertThat(s.cups).containsOnlyKeys("spring", "earlySummer", "summer", "champions", "autumn");
+        for (var e : s.cups.entrySet()) {
+            List<Integer> sizes = e.getValue().results().stream().map(List::size).toList();
+            if (e.getKey().equals("champions")) {
+                assertThat(sizes).containsExactly(8, 4, 2, 1);
+            } else {
+                assertThat(sizes).containsExactly(16, 8, 4, 2, 1);
+            }
+            for (List<FixtureResult> round : e.getValue().results()) {
+                assertThat(round).allMatch(r -> r.winnerId() > 0);
+            }
         }
+        // 네 권역 리그를 모두 끝까지 계산한다
+        assertThat(s.leagues.values()).allMatch(l -> l.roundsPlayed() == 14);
+    }
+
+    @Test
+    void championsEntrantsAreTopFourOfEachRegion() {
+        GameState s = EngineTestSupport.playYear(4);
+        var entrants = s.cups.get("champions").entrants();
+        assertThat(entrants).hasSize(16).doesNotHaveDuplicates();
+        for (var league : s.leagues.values()) {
+            var top4 = league.standings().stream().limit(4).map(r -> r.teamId).toList();
+            assertThat(entrants).containsAll(top4);
+        }
+    }
+
+    @Test
+    void notQualifiedForChampionsMeansNormalDays() {
+        for (long seed = 0; seed < 100; seed++) {
+            GameState s = EngineTestSupport.playYear(seed);
+            if (s.cups.get("champions").entrants().contains(s.playerSchoolId)) {
+                continue;
+            }
+            assertThat(s.matches).noneMatch(m -> "champions".equals(m.tournamentKey()));
+            assertThat(TournamentResult.of(ENGINE.calendar(), s, ENGINE.calendar().tournaments().get(3)).stage())
+                    .isEqualTo(TournamentResult.Stage.NOT_ENTERED);
+            return;
+        }
+        throw new AssertionError("왕중왕전에 못 나간 시드를 찾지 못했습니다");
+    }
+
+    @Test
+    void reputationIsPaidPerTournament() {
+        for (long seed = 0; seed < 300; seed++) {
+            GameState s = EngineTestSupport.playYear(seed);
+            long reached = s.cupStagesReached.values().stream().filter(l -> l.contains("8강")).count();
+            if (reached >= 2) {
+                assertThat(s.cupStagesReached.keySet().size()).isGreaterThanOrEqualTo(2);
+                return;
+            }
+        }
+        throw new AssertionError("두 대회에서 8강에 오른 시드를 찾지 못했습니다");
     }
 
     @Test

@@ -10,11 +10,13 @@ export default function SidePanel({ view }: { view: GameView }) {
       <div className="tabs">
         <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}>능력치</button>
         <button className={tab === 'growth' ? 'active' : ''} onClick={() => setTab('growth')}>특성·인연</button>
+        <button className={tab === 'schedule' ? 'active' : ''} onClick={() => setTab('schedule')}>일정</button>
         <button className={tab === 'league' ? 'active' : ''} onClick={() => setTab('league')}>리그 순위</button>
         <button className={tab === 'matches' ? 'active' : ''} onClick={() => setTab('matches')}>경기 기록</button>
       </div>
       {tab === 'stats' && <StatsPanel stats={view.stats} />}
       {tab === 'growth' && <GrowthPanel view={view} />}
+      {tab === 'schedule' && <ScheduleTable view={view} />}
       {tab === 'league' && <LeagueTable view={view} />}
       {tab === 'matches' && <MatchList view={view} />}
     </div>
@@ -86,6 +88,24 @@ function GrowthPanel({ view }: { view: GameView }) {
   );
 }
 
+function ScheduleTable({ view }: { view: GameView }) {
+  return (
+    <table className="league">
+      <thead><tr><th>대회</th><th>기간</th><th>상태</th><th>성적</th></tr></thead>
+      <tbody>
+        {view.schedule.map((s) => (
+          <tr key={s.key} className={s.status === '진행 중' ? 'me' : ''}>
+            <td>{s.name}{s.nextMatch && <div className="muted tiny">다음: {s.nextMatch}</div>}</td>
+            <td className="small">{s.period}</td>
+            <td className="small">{s.status}</td>
+            <td className="small">{s.result}{s.matchesPlayed > 0 && <span className="muted"> ({s.matchesPlayed}경기)</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function LeagueTable({ view }: { view: GameView }) {
   return (
     <table className="league">
@@ -116,7 +136,7 @@ function MatchList({ view }: { view: GameView }) {
         {view.matches.map((m, i) => (
           <tr key={i} className="clickable" onClick={() => showMatch(i)}>
             <td className="small">{m.dateLabel}</td>
-            <td className="small">{m.competition === 'CUP' ? view.cup.name : '리그'} {m.roundLabel}</td>
+            <td className="small">{m.competitionName} {m.roundLabel}</td>
             <td>{m.opponentName}</td>
             <td>{m.ourScore}:{m.theirScore} {resultLabel(m.result, m.penaltyWin)}</td>
             <td>{roleLabel[m.role]}</td>

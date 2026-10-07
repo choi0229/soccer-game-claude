@@ -10,7 +10,7 @@ import java.util.List;
  * rating 은 출전(선발·교체)한 경기만 값이 있다.
  * penaltyWin 은 토너먼트 무승부일 때만 값이 있다.
  */
-public record MatchRecord(Competition competition, String roundLabel, int week, String dateLabel,
+public record MatchRecord(Competition competition, String competitionName, String tournamentKey, String roundLabel, int week, String dateLabel,
                           int opponentId, String opponentName, double opponentStrength, String opponentDefender,
                           boolean home, MatchRole role, double selectionScore,
                           int teamGoals, int opponentGoals, int playerGoals, int playerAssists, int pressGoals,

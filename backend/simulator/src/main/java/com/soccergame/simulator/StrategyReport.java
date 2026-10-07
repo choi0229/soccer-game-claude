@@ -2,7 +2,9 @@ package com.soccergame.simulator;
 
 import com.soccergame.domain.config.GameConfig;
 import com.soccergame.domain.engine.GameState;
+import com.soccergame.domain.calendar.GameCalendar;
 import com.soccergame.domain.engine.Modifiers;
+import com.soccergame.domain.engine.TournamentResult;
 import com.soccergame.domain.model.Axis;
 import com.soccergame.domain.match.MatchRecord;
 import com.soccergame.domain.model.MatchRole;
@@ -47,7 +49,13 @@ public final class StrategyReport {
     final List<Double> seasonAssists = new ArrayList<>();
     final List<Double> reputation = new ArrayList<>();
     final int[] leagueRank = new int[9];
-    final Map<String, Integer> cupBest = new LinkedHashMap<>();
+    /** 대회 key → 최종 성적별 판 수 */
+    final Map<String, Map<TournamentResult.Stage, Integer>> tournamentStage = new LinkedHashMap<>();
+    /** 달(3~2월) → [선발, 교체, 벤치, 부상 결장] 경기 수, 출전 경기 평점 합 */
+    final Map<Integer, int[]> monthRoles = new LinkedHashMap<>();
+    final Map<Integer, Double> monthRatingSum = new LinkedHashMap<>();
+    /** [전반기(리그 종료 주까지), 후반기] × [선발, 교체, 벤치, 부상 결장] */
+    final int[][] halfRoles = new int[2][4];
     final List<Double> starterFirstWeek = new ArrayList<>();
     final List<Double> subFirstWeek = new ArrayList<>();
     final List<Double> coachAffinity = new ArrayList<>();
@@ -79,11 +87,13 @@ public final class StrategyReport {
     int runs;
 
     private final Modifiers modifiers;
+    private final GameCalendar calendar;
 
     public StrategyReport(String strategy, GameConfig config, int weeks) {
         this.strategy = strategy;
         this.config = config;
         this.modifiers = new Modifiers(config);
+        this.calendar = new GameCalendar(config.rules().calendar());
         this.weeks = weeks;
         this.weeklyStamina = new double[weeks];
         config.allStatKeys().forEach(k -> finalStats.put(k, new ArrayList<>()));
@@ -161,11 +171,18 @@ public final class StrategyReport {
         subFirstWeek.add((double) (firstSub < 0 ? NEVER : firstSub));
         reputation.add(s.reputation);
         leagueRank[s.league.rankOf(s.playerSchoolId)]++;
-        String best = s.cupStagesReached.isEmpty() ? "8강 전 탈락" : s.cupStagesReached.getLast();
-        if (s.cupStagesReached.isEmpty() && s.cup.isAlive(s.playerSchoolId)) {
-            best = "우승";
+        for (TournamentResult tr : TournamentResult.of(calendar, s)) {
+            tournamentStage.computeIfAbsent(tr.key(), k -> new LinkedHashMap<>()).merge(tr.stage(), 1, Integer::sum);
         }
-        cupBest.merge(best, 1, Integer::sum);
+        int leagueEnd = calendar.leagueEndWeek();
+        for (MatchRecord m : s.matches) {
+            int month = calendar.month(m.week());
+            monthRoles.computeIfAbsent(month, k -> new int[4])[m.role().ordinal()]++;
+            if (m.rating() != null) {
+                monthRatingSum.merge(month, m.rating(), Double::sum);
+            }
+            halfRoles[m.week() <= leagueEnd ? 0 : 1][m.role().ordinal()]++;
+        }
         coachAffinity.add(s.affinity.get(Axis.COACH));
         money.add((double) s.money);
         eventsPerRun.add((double) s.eventHistory.size());

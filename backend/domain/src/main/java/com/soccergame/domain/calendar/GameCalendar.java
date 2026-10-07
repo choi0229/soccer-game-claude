@@ -1,12 +1,16 @@
 package com.soccergame.domain.calendar;
 
 import com.soccergame.domain.config.Rules.CalendarRules;
+import com.soccergame.domain.config.Rules;
 import com.soccergame.domain.config.Rules.CupDay;
+import com.soccergame.domain.config.Rules.Period;
+import com.soccergame.domain.config.Rules.TournamentDef;
 import com.soccergame.domain.config.Rules.LeagueBlock;
 import com.soccergame.domain.config.Rules.Vacation;
 import com.soccergame.domain.config.Rules.WeekRef;
 import com.soccergame.domain.config.ConfigException;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -26,6 +30,31 @@ public final class GameCalendar {
             int weeks = weekIndex(block.to()) - weekIndex(block.from()) + 1;
             if (weeks != block.toRound() - block.fromRound() + 1) {
                 throw new ConfigException("리그 라운드 수와 기간이 맞지 않습니다: " + block);
+            }
+        }
+        // 경기일이 겹치면 안 된다 (리그 토요일, 토너먼트끼리)
+        java.util.Set<Integer> used = new java.util.HashSet<>();
+        for (int w = 0; w < rules.weeksPerYear(); w++) {
+            if (leagueRound(w) > 0) {
+                used.add(GameCalendar.absoluteDay(w, rules.league().matchDay()));
+            }
+        }
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        for (TournamentDef t : rules.tournaments()) {
+            if (!keys.add(t.key())) {
+                throw new ConfigException("대회 key 중복: " + t.key());
+            }
+            if (t.matchDays().size() != t.rounds()) {
+                throw new ConfigException("대회 " + t.key() + " 의 경기일 수가 라운드 수와 다릅니다");
+            }
+            if (t.entry().rule() == Rules.EntryRule.LEAGUE_TOP && t.entry().topPerRegion() == null) {
+                throw new ConfigException("대회 " + t.key() + " 의 권역별 진출 수가 없습니다");
+            }
+            for (CupDay d : t.matchDays()) {
+                int day = GameCalendar.absoluteDay(weekIndex(d.month(), d.week()), d.day());
+                if (!used.add(day)) {
+                    throw new ConfigException("대회 " + t.key() + " 의 경기일이 다른 경기와 겹칩니다: " + d);
+                }
             }
         }
     }
@@ -87,23 +116,54 @@ public final class GameCalendar {
         return rules.league().blocks().stream().mapToInt(LeagueBlock::toRound).max().orElse(0);
     }
 
-    /** 그날의 토너먼트 라운드 순번(0부터). 없으면 -1. */
-    public int cupRound(int week, Weekday day) {
-        for (int i = 0; i < rules.cup().matchDays().size(); i++) {
-            CupDay d = rules.cup().matchDays().get(i);
-            if (weekIndex(d.month(), d.week()) == week && d.day() == day) {
-                return i;
+    /** 그날 열리는 토너먼트 라운드 */
+    public record TournamentRound(TournamentDef tournament, int round) {
+    }
+
+    /** 그날의 토너먼트 라운드 (없으면 null) */
+    public TournamentRound tournamentRound(int week, Weekday day) {
+        for (TournamentDef t : rules.tournaments()) {
+            for (int i = 0; i < t.matchDays().size(); i++) {
+                CupDay d = t.matchDays().get(i);
+                if (weekIndex(d.month(), d.week()) == week && d.day() == day) {
+                    return new TournamentRound(t, i);
+                }
+            }
+        }
+        return null;
+    }
+
+    public List<TournamentDef> tournaments() {
+        return rules.tournaments();
+    }
+
+    /** 토너먼트 첫 경기가 있는 주 (이 주가 시작할 때 대진을 추첨한다) */
+    public int firstWeek(TournamentDef t) {
+        CupDay d = t.matchDays().getFirst();
+        return weekIndex(d.month(), d.week());
+    }
+
+    /** 리그 마지막 라운드가 있는 주 */
+    public int leagueEndWeek() {
+        return rules.league().blocks().stream().mapToInt(b -> weekIndex(b.to())).max().orElse(-1);
+    }
+
+    /** 리그 라운드가 있는 주 중 week 이후(포함) 가장 이른 주. 없으면 -1 */
+    public int nextLeagueWeek(int week) {
+        for (int w = week; w < weeksPerYear(); w++) {
+            if (leagueRound(w) > 0) {
+                return w;
             }
         }
         return -1;
     }
 
-    public int cupRounds() {
-        return rules.cup().matchDays().size();
+    public String periodLabel(Period p) {
+        return p.from().month() + "월 " + p.from().week() + "주~" + p.to().month() + "월 " + p.to().week() + "주";
     }
 
-    public String cupName() {
-        return rules.cup().name();
+    public String dayLabel(CupDay d) {
+        return label(weekIndex(d.month(), d.week()), d.day());
     }
 
     public String label(int week, Weekday day) {

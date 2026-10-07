@@ -7,11 +7,18 @@ import java.util.List;
 
 /** 단판 토너먼트. 무작위 추첨 후 대진표 순서대로 짝을 짓는다. */
 public final class Cup {
+    private final List<Integer> entrants;
     private List<Integer> alive;
     private final List<List<FixtureResult>> results = new ArrayList<>();
 
     private Cup(List<Integer> alive) {
+        this.entrants = List.copyOf(alive);
         this.alive = alive;
+    }
+
+    /** 추첨 때의 참가 학교 (대진표 순서) */
+    public List<Integer> entrants() {
+        return entrants;
     }
 
     public static Cup draw(List<Integer> teamIds, Rng rng) {

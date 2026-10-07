@@ -81,7 +81,7 @@ class ClutchFlowTest {
             ActionOutcome done = ENGINE.apply(s, new Action.ClutchChoice(s.pendingMatch.session.moment().id(), 1));
             assertThat(done.log()).extracting(LogEntry::slot).contains("새벽", "오전", "오후·야간", "밤");
             assertThat(s.day).isEqualTo(Weekday.THU);
-            assertThat(s.cup.roundsPlayed()).isEqualTo(1);
+            assertThat(s.cups.get("spring").roundsPlayed()).isEqualTo(1);
             return;
         }
         throw new AssertionError("평일 승부처 시드를 찾지 못했습니다");

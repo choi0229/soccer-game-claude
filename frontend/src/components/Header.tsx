@@ -35,6 +35,12 @@ export default function Header({ view, onQuit }: { view: GameView; onQuit: () =>
         <div title="감독 관계도와 훈련 능력치 상위 평균으로 계산 (가중치는 설정 파일)">
           출전 점수 <b>{f1(r.selectionScore)}</b> → {r.expectedRole}
         </div>
+        {view.nextMatch && (
+          <div title={view.nextMatch.dateLabel}>
+            다음 경기 <b>{view.nextMatch.days === 0 ? '오늘' : `${view.nextMatch.days}일 뒤`}</b>
+            <span className="muted small"> ({view.nextMatch.competition})</span>
+          </div>
+        )}
         {r.injured && <div className="error">부상 (복귀: {r.injuredUntil})</div>}
       </div>
       {r.academicsInfo.warning && <div className="warning">⚠ {r.academicsInfo.warning}</div>}

@@ -43,7 +43,7 @@ export default function MatchModal({ view, pending, onClutch }: Props) {
 
   const header = live
     ? `${live.competition} ${live.roundLabel} · ${live.home ? '홈' : '원정'} vs ${live.opponentName}`
-    : `${record!.competition === 'CUP' ? view.cup.name : '주말리그'} ${record!.roundLabel} · ${record!.home ? '홈' : '원정'} vs ${record!.opponentName}`;
+    : `${record!.competitionName} ${record!.roundLabel} · ${record!.home ? '홈' : '원정'} vs ${record!.opponentName}`;
   const sub = live
     ? `${live.dateLabel} · 상대 전력 ${live.opponentStrength} · 핵심 수비 ${live.opponentDefender} · 출전: ${live.role}`
     : `${record!.dateLabel} · 상대 전력 ${record!.opponentStrength} · 핵심 수비 ${record!.opponentDefender} · 출전: ${roleLabel[record!.role]}`;

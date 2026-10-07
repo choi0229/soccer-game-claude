@@ -57,7 +57,7 @@ const b = await playYear();
 const s = a.summary;
 console.log(`run A ${a.runId} 행동 ${a.actionCount} 지문 ${a.fingerprint}`);
 console.log(`run B ${b.runId} 행동 ${b.actionCount} 지문 ${b.fingerprint}`);
-console.log(`요약: ${s.wins}승 ${s.draws}무 ${s.losses}패, 골 ${s.goals}, 도움 ${s.assists}, 리그 ${s.leagueRank}위, 춘계배 ${s.cupResult}, 학업 ${s.academics.toFixed(1)}, 평판 ${s.reputation}`);
+console.log(`요약: ${s.wins}승 ${s.draws}무 ${s.losses}패, 골 ${s.goals}, 도움 ${s.assists}, 리그 ${s.leagueRank}위, ${s.tournaments.map((t) => `${t.name} ${t.text}`).join(' · ')}, 학업 ${s.academics.toFixed(1)}, 평판 ${s.reputation}`);
 if (a.fingerprint !== b.fingerprint || JSON.stringify(a.summary) !== JSON.stringify(b.summary)) {
   console.error('불일치!');
   process.exit(1);

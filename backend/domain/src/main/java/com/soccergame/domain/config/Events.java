@@ -27,6 +27,7 @@ public record Events(List<EventDef> events) {
      * minWeek / maxWeek 는 1년 기준 1~48 주차.
      * sources: 이 이벤트가 나올 수 있는 곳. 비어 있으면 일요일·만남·수업(기존 경로)에서 나오고 훈련 중에는 나오지 않는다.
      * lastMatchResult / lastMatchContributed: 직전 경기 결과, 직전 경기 골·도움 기록 여부.
+     * lastMatchWithinWeeks: 직전 경기가 N주 이내 (같은 주 0, 지난주 1 ...).
      */
     public record Trigger(Integer minWeek, Integer maxWeek, Boolean vacation, Boolean injured,
                           MatchRole lastMatchRole,
@@ -42,10 +43,10 @@ public record Events(List<EventDef> events) {
                           Long moneyMin, Double reputationMin,
                           List<String> requiresFlags, List<String> excludesFlags,
                           List<EventSource> sources, List<MatchResult> lastMatchResult,
-                          Boolean lastMatchContributed) {
+                          Boolean lastMatchContributed, Integer lastMatchWithinWeeks) {
         public static final Trigger NONE = new Trigger(null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null);
+                null, null, null, null);
 
         /** 직전 경기 결과·공격 포인트 조건이 있는 경기 전후 이벤트 */
         public boolean isMatchEvent() {

@@ -22,7 +22,7 @@ export interface ClutchLog {
 }
 
 export interface MatchRecord {
-  competition: 'LEAGUE' | 'CUP'; roundLabel: string; week: number; dateLabel: string;
+  competition: 'LEAGUE' | 'CUP'; competitionName: string; tournamentKey: string | null; roundLabel: string; week: number; dateLabel: string;
   opponentId: number; opponentName: string; opponentStrength: number; opponentDefender: string;
   home: boolean; role: MatchRole; selectionScore: number;
   teamGoals: number; opponentGoals: number; playerGoals: number; playerAssists: number; pressGoals: number;
@@ -76,7 +76,7 @@ export interface StatChange {
 export interface SeasonSummary {
   stats: StatChange[]; roles: Record<MatchRole, number>; appearances: number; goals: number; assists: number;
   averageRating: number | null; wins: number; draws: number; losses: number; leagueRank: number;
-  cupStages: string[]; cupResult: string; academics: number; makeupWeeks: number; makeupDays: number;
+  tournaments: TournamentResult[]; academics: number; makeupWeeks: number; makeupDays: number;
   reputation: number; money: number; injuries: number; exclusions: number; events: number;
 }
 
@@ -100,7 +100,8 @@ export interface GameView {
   } | null;
   options: { dawn: Option[]; classAttitudes: Option[]; menus: MenuOption[]; sundayActivities: Option[]; meetTargets: Option[] };
   league: StandingView[];
-  cup: { name: string; playerAlive: boolean; roundsPlayed: number; stagesReached: string[] };
+  schedule: ScheduleView[];
+  nextMatch: { days: number; dateLabel: string; competition: string } | null;
   traits: TraitView[];
   bonds: BondView[];
   liveMatch: LiveMatchView | null;
@@ -111,6 +112,15 @@ export interface GameView {
   lastOutcome: ActionOutcome | null;
   matches: MatchRecord[];
   summary: SeasonSummary;
+}
+
+export interface TournamentResult {
+  key: string; name: string; period: string; stage: string; text: string; matches: number;
+}
+
+export interface ScheduleView {
+  key: string; name: string; period: string; status: string; result: string; matchesPlayed: number;
+  nextMatch: string | null;
 }
 
 export interface TraitView {

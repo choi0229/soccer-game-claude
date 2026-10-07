@@ -25,6 +25,7 @@ public final class GameEngine {
     private final Resources resources;
     private final GameSetup setup;
     private final DayProcessor days;
+    private final Competitions competitions;
     private final Modifiers modifiers;
     private final MatchEngine matchEngine;
 
@@ -34,8 +35,8 @@ public final class GameEngine {
         this.resources = new Resources(config);
         this.matchEngine = new MatchEngine(config);
         EventEngine events = new EventEngine(config, calendar);
-        Competitions competitions = new Competitions(config, calendar, resources, matchEngine);
-        this.setup = new GameSetup(config, calendar, resources);
+        this.competitions = new Competitions(config, calendar, resources, matchEngine);
+        this.setup = new GameSetup(config, calendar, resources, competitions);
         this.modifiers = new Modifiers(config);
         this.days = new DayProcessor(config, calendar, resources, new TrainingCalculator(config), competitions, events,
                 modifiers);
@@ -93,8 +94,9 @@ public final class GameEngine {
         if (s.finished) {
             return false;
         }
-        if (calendar.cupRound(s.week, s.day) >= 0) {
-            return s.cup.isAlive(s.playerSchoolId);
+        GameCalendar.TournamentRound tr = calendar.tournamentRound(s.week, s.day);
+        if (tr != null) {
+            return competitions.playerAlive(s, tr.tournament());
         }
         return s.day == calendar.leagueMatchDay() && calendar.leagueRound(s.week) > 0;
     }

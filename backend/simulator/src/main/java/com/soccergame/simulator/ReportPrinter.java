@@ -1,10 +1,13 @@
 package com.soccergame.simulator;
 
 import com.soccergame.domain.config.GameConfig;
+import com.soccergame.domain.config.Rules;
+import com.soccergame.domain.engine.TournamentResult;
 import com.soccergame.domain.model.MatchRole;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Function;
 
 /** 결과를 마크다운 표로 만든다. */
@@ -106,8 +109,42 @@ public final class ReportPrinter {
             int k = rank;
             row("리그 " + rank + "위", reports, r -> pct(r.leagueRank[k], r.runs));
         }
-        for (String stage : List.of("8강 전 탈락", "8강", "4강", "우승")) {
-            row("춘계배 최고 성적: " + stage, reports, r -> pct(r.cupBest.getOrDefault(stage, 0), r.runs));
+        line("");
+        section("5-1. 대회별 최종 성적 (판 비율)");
+        header("대회 · 성적", reports);
+        var stages = List.of(TournamentResult.Stage.NOT_ENTERED, TournamentResult.Stage.EARLY_EXIT,
+                TournamentResult.Stage.QUARTER_FINAL, TournamentResult.Stage.SEMI_FINAL,
+                TournamentResult.Stage.RUNNER_UP, TournamentResult.Stage.CHAMPION);
+        for (var t : config.rules().calendar().tournaments()) {
+            for (var stage : stages) {
+                if (stage == TournamentResult.Stage.NOT_ENTERED && t.entry().rule() == Rules.EntryRule.ALL) {
+                    continue;
+                }
+                row(t.name() + " · " + stage.label(), reports, r -> pct(
+                        r.tournamentStage.getOrDefault(t.key(), Map.of()).getOrDefault(stage, 0), r.runs));
+            }
+            if (t.entry().rule() == Rules.EntryRule.LEAGUE_TOP) {
+                row(t.name() + " 진출 비율", reports, r -> pct(r.runs
+                        - r.tournamentStage.getOrDefault(t.key(), Map.of()).getOrDefault(TournamentResult.Stage.NOT_ENTERED, 0),
+                        r.runs));
+            }
+        }
+        line("");
+        section("5-2. 월별 출전과 평점");
+        header("달", reports);
+        int start = config.rules().calendar().startMonth();
+        for (int i = 0; i < 12; i++) {
+            int month = Math.floorMod(start - 1 + i, 12) + 1;
+            row(month + "월 경기 수/판", reports, r -> {
+                int[] c = r.monthRoles.get(month);
+                return c == null ? "0" : f2((double) java.util.Arrays.stream(c).sum() / r.runs);
+            });
+            row(month + "월 선발/교체/벤치", reports, r -> roleSplit(r.monthRoles.get(month)));
+            row(month + "월 평균 평점", reports, r -> {
+                int[] c = r.monthRoles.get(month);
+                int apps = c == null ? 0 : c[0] + c[1];
+                return apps == 0 ? "-" : f2(r.monthRatingSum.getOrDefault(month, 0.0) / apps);
+            });
         }
         line("");
 
@@ -205,8 +242,10 @@ public final class ReportPrinter {
         section("8. 학교 유형별 출전과 리그 순위 (조합마다 " + runs + "판)");
         line("주차 열: 1년 중 처음으로 그 역할로 출전한 주차의 중앙값 (괄호는 1년 내내 한 번도 없던 판의 비율)");
         line("");
-        line("| 학교 유형 (전력) | 전략 | 선발 | 교체 | 벤치 | 부상 결장 | 첫 교체 출전 주차 | 첫 선발 주차 | 평균 평점 | 평균 순위 | 1위 | 1~4위 | 8위 |");
-        line("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
+        line("전반기 = 리그 마지막 라운드 주까지, 후반기 = 그 뒤. 칸은 선발/교체/벤치 비율");
+        line("");
+        line("| 학교 유형 (전력) | 전략 | 선발 | 교체 | 벤치 | 부상 결장 | 전반기 | 후반기 | 첫 교체 출전 주차 | 첫 선발 주차 | 평균 평점 | 평균 순위 | 1위 | 1~4위 | 8위 |");
+        line("|---|---|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|");
         for (SchoolTypeRow row : rows) {
             StrategyReport r = row.report();
             double rankSum = 0;
@@ -222,6 +261,7 @@ public final class ReportPrinter {
                     + pct(r.roles.get(MatchRole.SUB), r.matches) + " | "
                     + pct(r.roles.get(MatchRole.BENCH), r.matches) + " | "
                     + pct(r.roles.get(MatchRole.ABSENT), r.matches) + " | "
+                    + roleSplit(r.halfRoles[0]) + " | " + roleSplit(r.halfRoles[1]) + " | "
                     + firstWeek(r.subFirstWeek) + " | "
                     + firstWeek(r.starterFirstWeek) + " | "
                     + (r.appearances == 0 ? "- (출전 없음)" : f2(r.ratingSum / r.appearances)) + " | "
@@ -232,6 +272,19 @@ public final class ReportPrinter {
         }
         line("");
         return out.toString();
+    }
+
+    /** [선발, 교체, 벤치, 결장] → "60/38/0" (경기 수 대비 %) */
+    private static String roleSplit(int[] c) {
+        if (c == null) {
+            return "-";
+        }
+        int total = java.util.Arrays.stream(c).sum();
+        if (total == 0) {
+            return "-";
+        }
+        return String.format(Locale.ROOT, "%.0f/%.0f/%.0f", 100.0 * c[0] / total, 100.0 * c[1] / total,
+                100.0 * c[2] / total);
     }
 
     private static String halfLabel(com.soccergame.domain.config.ClutchMoments.Half half) {

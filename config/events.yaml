@@ -7,6 +7,7 @@
 # 여자친구(girlfriend) 축은 friend_007 '친구의 소개'에서 연락처를 받으면 열린다.
 # sources: 나오는 곳 (teamTraining 팀 훈련, nightTraining 야간 훈련, sunday, meet, class). 비우면 일요일·만남·수업.
 # lastMatchResult [win/draw/loss], lastMatchContributed: 직전 경기 조건 (경기가 있던 주의 일요일에 우선 선택)
+# lastMatchWithinWeeks: 직전 경기가 N주 이내 (같은 주 0)
 
 events:
   # ---------------- 감독 (coach) ----------------
@@ -448,7 +449,7 @@ events:
     axis: friend
     title: 반 친구들의 응원 현수막
     body: 반 친구들이 "다음 경기에 들고 갈 거야"라며 네 이름을 쓴 현수막을 만들고 있었다.
-    trigger: { minWeek: 3, maxWeek: 18, vacation: false }
+    trigger: { minWeek: 3, lastMatchWithinWeeks: 2, vacation: false }
     choices:
       - { text: 꼭 골 넣겠다고 약속한다, effects: { friendAffinity: 3, stat: { momentum: 0.5 } }, trait: competitor }
       - { text: 같이 남아서 현수막 만드는 걸 돕는다, effects: { friendAffinity: 4, stamina: -5 }, trait: teamPlayer }
@@ -571,7 +572,7 @@ events:
     axis: coach
     title: 승리 후 미팅
     body: 이긴 경기 뒤 라커룸, 감독이 "오늘 잘했다. 그런데 여기서 만족할 거냐?"라고 물었다.
-    trigger: { lastMatchResult: [win], maxWeek: 18 }
+    trigger: { lastMatchResult: [win], lastMatchWithinWeeks: 2 }
     choices:
       - { text: 다음 경기는 더 크게 이기겠다고 한다, effects: { coachAffinity: 3, stat: { momentum: 1 } }, trait: competitor }
       - { text: 동료들 덕분이었다고 공을 돌린다, effects: { teammateAffinity: 3, coachAffinity: 2 }, trait: teamPlayer }
@@ -581,7 +582,7 @@ events:
     axis: coach
     title: 패배 후 영상 분석
     body: 진 경기 다음 날, 감독이 경기 영상을 틀어 놓고 1학년들을 불렀다.
-    trigger: { lastMatchResult: [loss], maxWeek: 18 }
+    trigger: { lastMatchResult: [loss], lastMatchWithinWeeks: 2 }
     choices:
       - { text: 내 장면을 밤늦게까지 돌려 본다, effects: { stat: { offTheBall: 1 }, stamina: -10 }, trait: hardWorker }
       - { text: 동료들과 실점 장면을 같이 짚어 본다, effects: { stat: { teamwork: 1 }, teammateAffinity: 2 }, trait: teamPlayer }
@@ -592,7 +593,7 @@ events:
     axis: teammate
     title: 아쉬운 무승부
     body: 비긴 경기 뒤 버스 안, 동기들이 말없이 창밖만 본다.
-    trigger: { lastMatchResult: [draw], maxWeek: 18 }
+    trigger: { lastMatchResult: [draw], lastMatchWithinWeeks: 2 }
     choices:
       - { text: 다음엔 꼭 이기자고 말한다, effects: { stat: { momentum: 1 }, teammateAffinity: 2 }, trait: competitor }
       - { text: 한 명씩 어깨를 두드려 준다, effects: { teammateAffinity: 4 }, trait: teamPlayer }
@@ -602,7 +603,7 @@ events:
     axis: family
     title: 가족의 축하 메시지
     body: 공격 포인트를 올린 경기 뒤, 가족 단톡방에 축하 메시지가 쏟아졌다.
-    trigger: { lastMatchContributed: true, maxWeek: 18 }
+    trigger: { lastMatchContributed: true, lastMatchWithinWeeks: 2 }
     choices:
       - { text: 덕분이라며 고맙다고 답장한다, effects: { familyAffinity: 3 }, trait: modelStudent }
       - { text: 다음 경기도 보러 오라고 한다, effects: { familyAffinity: 2, stat: { momentum: 0.5 } }, trait: competitor }
@@ -612,7 +613,7 @@ events:
     axis: common
     title: 아무것도 남기지 못한 경기
     body: 골도 도움도 없이 끝난 경기. 숙소에 돌아와도 장면들이 머릿속에 맴돈다.
-    trigger: { lastMatchContributed: false, maxWeek: 18 }
+    trigger: { lastMatchContributed: false, lastMatchWithinWeeks: 2 }
     choices:
       - { text: 혼자 운동장에 나가 슈팅을 복기한다, effects: { stat: { finishing: 1 }, stamina: -10 }, trait: hardWorker }
       - { text: 내 역할을 노트에 정리해 본다, effects: { stat: { composure: 0.5 }, academics: 1 }, trait: modelStudent }
@@ -622,7 +623,7 @@ events:
     axis: common
     title: 패배 후 귀갓길
     body: 진 경기 뒤 집에 가는 버스. 휴대폰에는 응원 메시지가 몇 개 와 있다.
-    trigger: { lastMatchResult: [loss], maxWeek: 18 }
+    trigger: { lastMatchResult: [loss], lastMatchWithinWeeks: 2 }
     choices:
       - { text: 다음 경기에서 갚아 주겠다고 다짐한다, effects: { stat: { mental: 1 } }, trait: competitor }
       - { text: 집에 가서 일찍 잔다, effects: { stamina: 10 }, trait: modelStudent }

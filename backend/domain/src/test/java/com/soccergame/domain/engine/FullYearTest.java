@@ -13,10 +13,11 @@ class FullYearTest {
         assertThat(s.finished).isTrue();
         assertThat(s.week).isEqualTo(48);
         assertThat(s.league.roundsPlayed()).isEqualTo(14);
-        assertThat(s.cup.roundsPlayed()).isEqualTo(5);
-        assertThat(s.cup.alive()).hasSize(1);
+        assertThat(s.cups).hasSize(5);
+        assertThat(s.cups.values()).allMatch(c -> c.alive().size() == 1);
         assertThat(s.matches.stream().filter(m -> m.competition() == Competition.LEAGUE)).hasSize(14);
-        assertThat(s.matches.stream().filter(m -> m.competition() == Competition.CUP).count()).isBetween(1L, 5L);
+        // 대회 4개는 전체 참가, 왕중왕전은 진출해야 참가: 최소 4경기, 최대 5+5+5+4+5
+        assertThat(s.matches.stream().filter(m -> m.competition() == Competition.CUP).count()).isBetween(4L, 24L);
         assertThat(s.league.standings().stream().mapToInt(r -> r.played)).allMatch(p -> p == 14);
     }
 

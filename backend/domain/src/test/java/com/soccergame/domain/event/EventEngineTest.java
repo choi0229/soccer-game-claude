@@ -32,7 +32,7 @@ class EventEngineTest {
 
     private GameState semester(long seed) {
         GameState s = engine.newGame(seed);
-        s.week = engine.calendar().weekIndex(10, 1);
+        s.week = engine.calendar().weekIndex(11, 1);
         s.day = Weekday.MON;
         return s;
     }
@@ -332,7 +332,7 @@ class EventEngineTest {
         assertThat(eligible(s, "match_001")).isFalse();
         // 직전 경기: 이번 주, 승리, 골 1
         var record = new com.soccergame.domain.match.MatchRecord(com.soccergame.domain.model.Competition.LEAGUE,
-                "1라운드", 10, "x", 2, "상대", 50, "파이터형", true, com.soccergame.domain.model.MatchRole.STARTER, 40,
+                "주말리그", null, "1라운드", 10, "x", 2, "상대", 50, "파이터형", true, com.soccergame.domain.model.MatchRole.STARTER, 40,
                 1, 0, 1, 0, 0, 0, 2, 0, null, "W", 7.0, 0, null, null, java.util.List.of(), java.util.List.of(), null);
         s.week = 10;
         s.matches.add(record);
@@ -348,8 +348,10 @@ class EventEngineTest {
             events.trigger(t, null, EventSource.SUNDAY);
             assertThat(def(t.pendingEvents.peekFirst().eventId()).trigger().isMatchEvent()).isTrue();
         }
-        // 18주차 이후에는 나오지 않는다
-        s.week = 20;
+        // 직전 경기가 2주 이내여야 한다 (경기 10주 → 12주까지)
+        s.week = 12;
+        assertThat(eligible(s, "match_001")).isTrue();
+        s.week = 13;
         assertThat(eligible(s, "match_001")).isFalse();
     }
 }

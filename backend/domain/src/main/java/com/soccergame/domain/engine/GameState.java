@@ -36,8 +36,12 @@ public final class GameState {
 
     public final List<School> schools = new ArrayList<>();
     public int playerSchoolId;
+    /** 플레이어 권역 리그 (leagues 중 하나) */
     public League league;
-    public Cup cup;
+    /** 권역 → 리그. 왕중왕전 진출 학교를 정하려고 네 권역을 모두 계산한다 */
+    public final Map<Integer, League> leagues = new LinkedHashMap<>();
+    /** 대회 key → 대진 (첫 경기 주가 시작할 때 추첨) */
+    public final Map<String, Cup> cups = new LinkedHashMap<>();
 
     public Stats stats;
     public Stats initialStats;
@@ -74,7 +78,8 @@ public final class GameState {
     public final Map<Integer, Double> makeupWeeks = new TreeMap<>();
 
     public final List<MatchRecord> matches = new ArrayList<>();
-    public final List<String> cupStagesReached = new ArrayList<>();
+    /** 대회 key → 평판을 받은 단계 (8강, 4강, 우승) */
+    public final Map<String, List<String>> cupStagesReached = new LinkedHashMap<>();
 
     public final Metrics metrics;
     public ActionOutcome lastOutcome;

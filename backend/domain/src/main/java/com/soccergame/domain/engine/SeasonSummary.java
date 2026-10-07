@@ -12,7 +12,7 @@ import java.util.Map;
 /** 48주가 끝났을 때(또는 진행 중 현재까지)의 시즌 요약 */
 public record SeasonSummary(List<StatChange> stats, Map<MatchRole, Integer> roles, int appearances, int goals,
                             int assists, Double averageRating, int wins, int draws, int losses, int leagueRank,
-                            List<String> cupStages, String cupResult, double academics,
+                            List<TournamentResult> tournaments, double academics,
                             int makeupWeeks, int makeupDays, double reputation, long money, int injuries,
                             int exclusions, int events) {
 
@@ -53,26 +53,12 @@ public record SeasonSummary(List<StatChange> stats, Map<MatchRole, Integer> role
                 default -> l++;
             }
         }
-        String cupResult = cupResult(s);
         return new SeasonSummary(stats, roles, apps, goals, assists,
                 apps == 0 ? null : Math.round(ratingSum / apps * 100) / 100.0, w, d, l,
-                s.league.rankOf(s.playerSchoolId), List.copyOf(s.cupStagesReached), cupResult, s.academics,
+                s.league.rankOf(s.playerSchoolId),
+                TournamentResult.of(new com.soccergame.domain.calendar.GameCalendar(config.rules().calendar()), s),
+                s.academics,
                 s.makeupWeeks.size(), s.metrics.makeupDays, s.reputation, s.money, s.metrics.injuries, s.metrics.exclusions,
                 s.eventHistory.size());
-    }
-
-    private static String cupResult(GameState s) {
-        List<MatchRecord> cup = s.matches.stream()
-                .filter(m -> m.competition() == com.soccergame.domain.model.Competition.CUP).toList();
-        if (cup.isEmpty()) {
-            return "미출전";
-        }
-        MatchRecord last = cup.getLast();
-        boolean advanced = last.ourScore() > last.theirScore()
-                || (last.ourScore() == last.theirScore() && Boolean.TRUE.equals(last.penaltyWin()));
-        if (advanced && "결승".equals(last.roundLabel())) {
-            return "우승";
-        }
-        return advanced ? last.roundLabel() + " 진출" : last.roundLabel() + " 탈락";
     }
 }

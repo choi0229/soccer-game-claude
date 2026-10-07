@@ -76,10 +76,10 @@ final class DayProcessor {
             classSlot(s, log, newEvents);
         }
 
-        int cupRound = calendar.cupRound(s.week, s.day);
-        boolean playerInCup = cupRound >= 0 && s.cup.isAlive(s.playerSchoolId);
-        if (cupRound >= 0) {
-            Competitions.RoundOutcome round = competitions.playCupRound(s, cupRound, date);
+        GameCalendar.TournamentRound tr = calendar.tournamentRound(s.week, s.day);
+        boolean playerInCup = tr != null && competitions.playerAlive(s, tr.tournament());
+        if (tr != null) {
+            Competitions.RoundOutcome round = competitions.playCupRound(s, tr.tournament(), tr.round(), date);
             if (round.paused()) {
                 return pause(s, round.pending(), PendingMatch.DayKind.WEEKDAY, date, log, newEvents);
             }
@@ -121,10 +121,8 @@ final class DayProcessor {
     private ActionOutcome afterMatch(GameState s, PendingMatch.DayKind kind, String date, List<LogEntry> logSoFar,
                                      List<String> newEvents, MatchRecord match) {
         List<LogEntry> log = new ArrayList<>(logSoFar);
-        String competition = match.competition() == com.soccergame.domain.model.Competition.CUP
-                ? calendar.cupName() : "주말리그";
         log.add(new LogEntry(kind == PendingMatch.DayKind.WEEKDAY ? "오후·야간" : "경기",
-                competition + " " + matchSummary(match)));
+                match.competitionName() + " " + matchSummary(match)));
         if (kind == PendingMatch.DayKind.SATURDAY) {
             saturdayConditionCheck(s, log);
         }
@@ -280,10 +278,10 @@ final class DayProcessor {
         List<String> newEvents = new ArrayList<>();
         String date = calendar.label(s.week, s.day);
         s.excludedToday = false;
-        int cupRound = calendar.cupRound(s.week, s.day);
+        GameCalendar.TournamentRound tr = calendar.tournamentRound(s.week, s.day);
         Competitions.RoundOutcome round = null;
-        if (cupRound >= 0) {
-            round = competitions.playCupRound(s, cupRound, date);
+        if (tr != null) {
+            round = competitions.playCupRound(s, tr.tournament(), tr.round(), date);
         } else if (s.day == calendar.leagueMatchDay() && calendar.leagueRound(s.week) > 0) {
             round = competitions.playLeagueRound(s, calendar.leagueRound(s.week), date);
         }
@@ -429,6 +427,8 @@ final class DayProcessor {
         s.day = Weekday.MON;
         if (s.week >= calendar.weeksPerYear()) {
             s.finished = true;
+        } else {
+            competitions.drawTournamentsStartingIn(s, s.week);
         }
     }
 
