@@ -19,7 +19,8 @@ import java.util.List;
  * 경기 판정. 게임 상태를 바꾸지 않고 결과만 계산한다(적용은 Competitions 가 한다).
  *
  * 난수 사용 순서: 우리 팀 득점 → 상대 득점 → 우리 득점 시각 → 상대 득점 시각 → 장면 수 → 장면 종류
- * → 승부처 여부 → 장면별 판정(압박 성공 시 득점 판정) → [승부처 종류 → 선택 판정] → 남은 장면 → 승부차기.
+ * → 승부처 여부 → (승부처면) 대체할 장면 순번 → 장면별 판정(압박 성공 시 득점 판정) → [승부처 종류 → 선택 판정]
+ * → 남은 장면 → 승부차기.
  * 승부처가 나오면 그 직전에서 멈추고(start 가 반환), 선택을 받으면 resolveClutch 로 이어서 계산한다.
  */
 public final class MatchEngine {
@@ -127,7 +128,7 @@ public final class MatchEngine {
             if (in.allowClutch() && n > 0) {
                 double chance = in.role() == MatchRole.STARTER ? clutch.chance().starter() : clutch.chance().sub();
                 if (rng.chance(chance)) {
-                    clutchSlot = n - 1;
+                    clutchSlot = rng.nextInt(n);
                 }
             }
         }
@@ -201,8 +202,15 @@ public final class MatchEngine {
         String result;
         String text = c.text() + " → ";
         SceneDef extra = null;
+        Rules.RatingRules rr = rules.rating();
+        double ratingChange;
         if (success) {
             s.successes++;
+            ratingChange = switch (c.success().outcome()) {
+                case GOAL -> rr.goal();
+                case ASSIST -> rr.assist();
+                case EXTRA_SHOT, TEAM_GOAL_CHANCE -> rr.otherSuccess();
+            };
             switch (c.success().outcome()) {
                 case GOAL -> {
                     s.playerGoals++;
@@ -236,6 +244,7 @@ public final class MatchEngine {
             }
         } else {
             s.ratingDelta += c.failRating();
+            ratingChange = c.failRating();
             result = "FAIL";
             text += "실패.";
         }
@@ -243,7 +252,7 @@ public final class MatchEngine {
         s.logs.add(new SceneLog(minute, "CLUTCH", "승부처: " + moment.title(), false, round1(p), success, result,
                 text, List.copyOf(mods)));
         s.clutchLog = new ClutchLog(moment.id(), moment.title(), moment.situation(), minute, choiceIndex, c.text(),
-                c.style(), round1(p), success, result);
+                c.style(), round1(p), success, result, ratingChange);
         s.moment = null;
         if (extra != null) {
             judgeSingle(rng, s, extra, minute, true);
@@ -487,6 +496,10 @@ public final class MatchEngine {
                     it.modifiers()));
         }
         if (upTo != null) {
+            // 승부처가 후반이면 최종 중계처럼 승부처 앞에 전반 종료가 와야 한다
+            if (!halfTimeShown && upTo > half) {
+                out.add(new TimelineEntry(half, "HALF_TIME", "전반 종료.", our, their));
+            }
             return out;
         }
         if (!halfTimeShown) {

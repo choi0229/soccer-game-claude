@@ -267,7 +267,7 @@ events:
     body: 짝꿍이 "너 어제 졸았지?"라며 정리한 노트를 내밀었다.
     trigger: { friendAffinityMin: 35, vacation: false }
     choices:
-      - { text: 노트를 빌리고 매점 간식으로 보답한다, effects: { academics: 3, friendAffinity: 2, money: -10000 }, trait: teamPlayer }
+      - { text: 노트를 빌리고 매점 간식으로 보답한다, effects: { academics: 3, friendAffinity: 2, money: -10000 } }
       - { text: 고맙지만 혼자 정리해 보겠다고 한다, effects: { academics: 2, stamina: -5 }, trait: modelStudent }
     once: false
 

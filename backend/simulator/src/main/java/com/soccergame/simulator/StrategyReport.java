@@ -63,6 +63,11 @@ public final class StrategyReport {
     /** 승부처: 발생한 출전 경기 수, 유형별 선택·성공 수, 승부처 유무별 평점 합과 경기 수 */
     int clutchMatches;
     final Map<String, int[]> clutchStyle = new LinkedHashMap<>();
+    /** 유형별 승부처 선택의 평점 변화 합 */
+    final Map<String, Double> clutchStyleRating = new LinkedHashMap<>();
+    /** [전반, 후반] 승부처 수 */
+    final int[] clutchHalf = new int[2];
+    final Map<String, Integer> clutchMoments = new LinkedHashMap<>();
     double ratingWithClutch;
     double ratingWithoutClutch;
     int appearancesWithoutClutch;
@@ -130,6 +135,9 @@ public final class StrategyReport {
                     if (m.clutch().success()) {
                         c[1]++;
                     }
+                    clutchStyleRating.merge(m.clutch().style().name(), m.clutch().ratingChange(), Double::sum);
+                    clutchHalf[m.clutch().minute() <= config.rules().match().minutes() / 2 ? 0 : 1]++;
+                    clutchMoments.merge(m.clutch().momentId(), 1, Integer::sum);
                 } else {
                     appearancesWithoutClutch++;
                     ratingWithoutClutch += m.rating();

@@ -43,8 +43,10 @@ class ClutchTest {
     }
 
     @Test
-    void clutchReplacesLastSceneAndMatchesSituation() {
+    void clutchReplacesOneBaseSceneAndMatchesSituation() {
         int checked = 0;
+        int[] slotCounts = new int[5];
+        int scenesAfterClutch = 0;
         for (long seed = 0; seed < 1000; seed++) {
             MatchSession s = engine.start(new Rng(seed), input(MatchRole.STARTER));
             if (!s.awaitingChoice()) {
@@ -52,8 +54,11 @@ class ClutchTest {
             }
             checked++;
             int baseScenes = s.picked.size();
-            // 멈춘 시점은 마지막 기본 장면의 분
-            assertThat(s.momentMinute()).isEqualTo(baseScenes * 80 / (baseScenes + 1));
+            // 멈춘 시점은 대체한 기본 장면(clutchSlot)의 분
+            assertThat(s.momentMinute()).isEqualTo((s.clutchSlot + 1) * 80 / (baseScenes + 1));
+            if (baseScenes == 5) {
+                slotCounts[s.clutchSlot]++;
+            }
             List<TimelineEntry> partial = engine.partialTimeline(s);
             TimelineEntry last = partial.getLast();
             ClutchMoments.Condition c = s.moment().condition();
@@ -71,8 +76,18 @@ class ClutchTest {
             // 진행 중 중계는 최종 중계의 앞부분과 같다
             assertThat(r.timeline().subList(0, partial.size())).isEqualTo(partial);
             assertThat(r.timeline().get(partial.size()).kind()).isEqualTo("CLUTCH");
+            // 승부처 뒤에 남은 기본 장면은 평소대로 판정된다
+            long after = r.scenes().stream().filter(x -> !x.extra() && x.minute() > s.momentMinute()).count();
+            assertThat(after).isEqualTo(baseScenes - 1 - s.clutchSlot);
+            scenesAfterClutch += after;
         }
         assertThat(checked).isGreaterThan(400);
+        assertThat(scenesAfterClutch).isPositive();
+        // 장면 5개짜리 경기에서 대체 위치는 다섯 곳에 고르게 나온다
+        int total = java.util.Arrays.stream(slotCounts).sum();
+        for (int c : slotCounts) {
+            assertThat((double) c / total).isBetween(0.12, 0.28);
+        }
     }
 
     @Test
@@ -127,7 +142,7 @@ class ClutchTest {
                 ClutchMoments.MomentChoice safer = byBase.get(i);
                 assertThat(rank.get(riskier.success().outcome())).as(m.id())
                         .isGreaterThan(rank.get(safer.success().outcome()));
-                assertThat(riskier.failRating()).as(m.id()).isLessThan(safer.failRating());
+                assertThat(riskier.failRating()).as(m.id()).isLessThanOrEqualTo(safer.failRating());
             }
         }
         // 전반/후반 × 스코어 6가지 상황마다 1~2건

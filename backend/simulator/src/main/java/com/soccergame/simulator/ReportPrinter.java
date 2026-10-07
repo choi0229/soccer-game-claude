@@ -153,6 +153,8 @@ public final class ReportPrinter {
         section("7-1. 승부처");
         header("항목", reports);
         row("출전 경기당 승부처 발생 비율", reports, r -> pct(r.clutchMatches, r.appearances));
+        row("승부처 전반 / 후반", reports, r -> pct(r.clutchHalf[0], r.clutchMatches) + " / "
+                + pct(r.clutchHalf[1], r.clutchMatches));
         for (var style : com.soccergame.domain.config.ClutchMoments.Style.values()) {
             String label = config.clutchMoments().styles().get(style);
             row(label + " 선택 비율", reports, r -> pct(r.clutchStyle.getOrDefault(style.name(), new int[2])[0],
@@ -161,6 +163,16 @@ public final class ReportPrinter {
                 int[] c = r.clutchStyle.getOrDefault(style.name(), new int[2]);
                 return c[0] == 0 ? "-" : pct(c[1], c[0]);
             });
+            row(label + " 평점 변화 평균", reports, r -> {
+                int[] c = r.clutchStyle.getOrDefault(style.name(), new int[2]);
+                return c[0] == 0 ? "-" : String.format(Locale.ROOT, "%+.3f",
+                        r.clutchStyleRating.getOrDefault(style.name(), 0.0) / c[0]);
+            });
+        }
+        for (var moment : config.clutchMoments().moments()) {
+            row("발생 비율: " + moment.id() + " " + moment.title() + " (" + halfLabel(moment.condition().half())
+                    + "·" + scoreLabel(moment.condition().score()) + ")", reports,
+                    r -> pct(r.clutchMoments.getOrDefault(moment.id(), 0), r.clutchMatches));
         }
         row("평균 평점: 승부처 있는 경기", reports, r -> r.clutchMatches == 0 ? "-"
                 : f2(r.ratingWithClutch / r.clutchMatches));
@@ -220,6 +232,18 @@ public final class ReportPrinter {
         }
         line("");
         return out.toString();
+    }
+
+    private static String halfLabel(com.soccergame.domain.config.ClutchMoments.Half half) {
+        return half == com.soccergame.domain.config.ClutchMoments.Half.FIRST ? "전반" : "후반";
+    }
+
+    private static String scoreLabel(com.soccergame.domain.config.ClutchMoments.ScoreState state) {
+        return switch (state) {
+            case LEADING -> "앞섬";
+            case TIED -> "동점";
+            case TRAILING -> "뒤짐";
+        };
     }
 
     private static String firstWeek(List<Double> weeks) {

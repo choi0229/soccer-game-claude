@@ -46,12 +46,12 @@ class EventEngineTest {
     }
 
     @Test
-    void repeatableEventHasSixWeekCooldown() {
+    void repeatableEventHasTwelveWeekCooldown() {
         GameState s = semester(1);
         assertThat(eligible(s, "family_001")).isTrue();
         s.eventLastWeek.put("family_001", s.week);
         assertThat(eligible(s, "family_001")).isFalse();
-        s.week += 5;
+        s.week += 11;
         assertThat(eligible(s, "family_001")).isFalse();
         s.week += 1;
         assertThat(eligible(s, "family_001")).isTrue();
@@ -175,7 +175,7 @@ class EventEngineTest {
     }
 
     @Test
-    void sundayRandomEventAboutSeventyPercent() {
+    void sundayRandomEventAboutFiftyPercent() {
         int fired = 0;
         int n = 2000;
         for (long seed = 0; seed < n; seed++) {
@@ -184,7 +184,7 @@ class EventEngineTest {
             engine.apply(s, new Action.Sunday(SundayActivity.REST, null));
             fired += s.pendingEvents.size();
         }
-        assertThat((double) fired / n).isBetween(0.66, 0.74);
+        assertThat((double) fired / n).isBetween(0.46, 0.54);
     }
 
     @Test
@@ -288,7 +288,7 @@ class EventEngineTest {
     }
 
     @Test
-    void trainingEventsOnlyFromTrainingSlotsAboutFivePercent() {
+    void trainingEventsOnlyFromTrainingSlotsAboutThreePercent() {
         int team = 0;
         int night = 0;
         int n = 3000;
@@ -307,8 +307,8 @@ class EventEngineTest {
                 }
             }
         }
-        assertThat((double) team / n).isBetween(0.035, 0.065);
-        assertThat((double) night / n).isBetween(0.035, 0.065);
+        assertThat((double) team / n).isBetween(0.018, 0.042);
+        assertThat((double) night / n).isBetween(0.018, 0.042);
         // 다른 경로에서는 훈련 이벤트가 나오지 않는다
         GameState s = semester(1);
         assertThat(events.eligible(s, null, EventSource.SUNDAY))
