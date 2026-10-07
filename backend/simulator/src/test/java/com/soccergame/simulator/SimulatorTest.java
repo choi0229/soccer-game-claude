@@ -65,4 +65,32 @@ class SimulatorTest {
         }
         assertThat(met).contains(com.soccergame.domain.model.Axis.GIRLFRIEND);
     }
+
+    @Test
+    void randomStrategyTraitScoresAreWithinTwentyPercent() {
+        java.util.Map<String, Double> sum = new java.util.LinkedHashMap<>();
+        int n = 300;
+        for (long seed = 1; seed <= n; seed++) {
+            GameState s = runner.run(seed, Strategies.all().getFirst());
+            s.traitScores.forEach((k, v) -> sum.merge(k, (double) v, Double::sum));
+        }
+        double max = sum.values().stream().mapToDouble(Double::doubleValue).max().orElseThrow();
+        double min = sum.values().stream().mapToDouble(Double::doubleValue).min().orElseThrow();
+        assertThat(sum).hasSize(4);
+        assertThat(max / min).as("특성 연간 평균 %s", sum).isLessThanOrEqualTo(1.2);
+    }
+
+    @Test
+    void trainingStrategiesPickTheSafestClutchOption() {
+        var options = java.util.List.of(
+                new com.soccergame.domain.match.ClutchOption(0, "a", null, java.util.List.of(), 12, java.util.List.of(), "", -0.4, null),
+                new com.soccergame.domain.match.ClutchOption(1, "b", null, java.util.List.of(), 61, java.util.List.of(), "", -0.1, null),
+                new com.soccergame.domain.match.ClutchOption(2, "c", null, java.util.List.of(), 40, java.util.List.of(), "", -0.2, null));
+        for (Strategy st : Strategies.all()) {
+            if (st.name().equals("무작위") || st.name().equals("균형")) {
+                continue;
+            }
+            assertThat(st.clutchChoice(null, options, new com.soccergame.domain.random.Rng(1))).as(st.name()).isEqualTo(1);
+        }
+    }
 }

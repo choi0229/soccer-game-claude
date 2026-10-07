@@ -21,7 +21,7 @@ class ModifiersTest {
     @Test
     void traitTiers() {
         GameState s = plainSemesterMonday(1);
-        int[][] cases = {{0, 0}, {5, 0}, {6, 1}, {13, 1}, {14, 2}, {23, 2}, {24, 3}, {40, 3}};
+        int[][] cases = {{0, 0}, {9, 0}, {10, 1}, {24, 1}, {25, 2}, {44, 2}, {45, 3}, {60, 3}};
         for (int[] c : cases) {
             s.traitScores.put("competitor", c[0]);
             assertThat(m.traitTier(s, "competitor")).as("score %d", c[0]).isEqualTo(c[1]);
@@ -45,9 +45,9 @@ class ModifiersTest {
     @Test
     void trainingBonusMatchesSlotAndMenu() {
         GameState s = plainSemesterMonday(1);
-        s.traitScores.put("hardWorker", 6);   // 야간 +5%
-        s.traitScores.put("competitor", 14);  // 슈팅·파워·제공권 +10%
-        s.traitScores.put("teamPlayer", 24);  // 연계·압박·돌파 +15%
+        s.traitScores.put("hardWorker", 10);  // 야간 +5%
+        s.traitScores.put("competitor", 25);  // 슈팅·파워·제공권 +10%
+        s.traitScores.put("teamPlayer", 45);  // 연계·압박·돌파 +15%
         s.affinity.put(Axis.COACH, 40.0);     // 팀 훈련 +3%
         s.affinity.put(Axis.TEAMMATE, 60.0);  // 야간 +6%
         assertThat(m.training(s, TrainingSlot.AFTERNOON, "power").applied()).isCloseTo(0.13, within(1e-9));
@@ -62,8 +62,8 @@ class ModifiersTest {
     @Test
     void bonusIsCappedAtThirtyPercent() {
         GameState s = plainSemesterMonday(1);
-        s.traitScores.put("hardWorker", 24);  // +15%
-        s.traitScores.put("competitor", 24);  // +15%
+        s.traitScores.put("hardWorker", 45);  // +15%
+        s.traitScores.put("competitor", 45);  // +15%
         s.affinity.put(Axis.TEAMMATE, 80.0);  // +9%
         s.affinity.put(Axis.GIRLFRIEND, 80.0); // +6%
         Modifiers.TrainingBonus b = m.training(s, TrainingSlot.NIGHT, "shooting");
@@ -76,7 +76,7 @@ class ModifiersTest {
     void growthUsesBonusAndLogsBreakdown() {
         GameState s = plainSemesterMonday(2);
         s.stamina = 60;
-        s.traitScores.put("competitor", 6);
+        s.traitScores.put("competitor", 10);
         s.affinity.put(Axis.COACH, 40.0);
         double power = s.stats.get("shotPower");
         ActionOutcome out = ENGINE.apply(s, new Action.Day(DawnChoice.SLEEP, ClassAttitude.DOZE,
@@ -94,7 +94,7 @@ class ModifiersTest {
         GameState s = plainSemesterMonday(3);
         s.day = Weekday.SUN;
         s.academics = 50;
-        s.traitScores.put("modelStudent", 14); // 4%
+        s.traitScores.put("modelStudent", 25); // 4%
         ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
         assertThat(s.academics).isCloseTo(48, within(1e-9));
     }
@@ -115,7 +115,7 @@ class ModifiersTest {
         s.affinity.put(Axis.GIRLFRIEND, 30.0);
         s.day = Weekday.SUN;
         ENGINE.apply(s, new Action.Sunday(SundayActivity.REST, null));
-        assertThat(s.affinity.get(Axis.GIRLFRIEND)).isLessThanOrEqualTo(28.0 + 6); // 이벤트로 변할 수 있다
+        assertThat(s.affinity.get(Axis.GIRLFRIEND)).isLessThanOrEqualTo(29.0 + 6); // 이벤트로 변할 수 있다
         GameState t = plainSemesterMonday(5);
         t.affinity.put(Axis.GIRLFRIEND, 30.0);
         t.day = Weekday.SUN;
@@ -125,13 +125,13 @@ class ModifiersTest {
         u.affinity.put(Axis.GIRLFRIEND, 30.0);
         u.day = Weekday.SUN;
         ActionOutcome rest = ENGINE.apply(u, new Action.Sunday(SundayActivity.PART_TIME, null));
-        assertThat(rest.log()).anyMatch(e -> e.slot().equals("관계") && e.text().contains("관계도 -2"));
+        assertThat(rest.log()).anyMatch(e -> e.slot().equals("관계") && e.text().contains("관계도 -1"));
     }
 
     @Test
     void tierChangeIsAnnouncedInTheDayLog() {
         GameState s = plainSemesterMonday(6);
-        s.affinity.put(Axis.FRIEND, 37.0);
+        s.affinity.put(Axis.FRIEND, 39.0);
         ActionOutcome out = ENGINE.apply(s, new Action.Day(null, ClassAttitude.FRIENDS, Map.of()));
         assertThat(s.affinity.get(Axis.FRIEND)).isEqualTo(40.0);
         assertThat(out.log()).anyMatch(e -> e.slot().equals("알림") && e.text().startsWith("학교 친구 인연 0단계 → 1단계"));

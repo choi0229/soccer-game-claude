@@ -48,7 +48,7 @@ public class ViewMapper {
         Phase phase = engine.phase(s);
         return new GameView(runId, s.seed, s.actionCount, StateFingerprint.of(s), phase, date(s), school(s),
                 resources(s), stats(s), selections(s), slots(s), matchToday(s), options(s), league(s), cup(s),
-                traits(s), bonds(s), pendingEvent(s),
+                traits(s), bonds(s), liveMatch(s), pendingEvent(s),
                 s.lastOutcome, List.copyOf(s.matches), SeasonSummary.of(config, s));
     }
 
@@ -195,6 +195,24 @@ public class ViewMapper {
         return new SlotView(key, label, "FIXED", activity, null, note);
     }
 
+    private LiveMatchView liveMatch(GameState s) {
+        var p = s.pendingMatch;
+        if (p == null) {
+            return null;
+        }
+        var moment = p.session.moment();
+        var choices = engine.clutchOptions(s).stream().map(o -> new ClutchChoiceView(o.index(), o.text(),
+                o.style().name(), config.clutchMoments().styles().get(o.style()), o.stats(), o.probability(),
+                o.modifiers(), o.reward(), o.failRating(), o.trait() == null ? null : config.trait(o.trait()).name()))
+                .toList();
+        String competition = p.competition == com.soccergame.domain.model.Competition.CUP ? calendar.cupName()
+                : "주말리그";
+        return new LiveMatchView(competition, p.roundLabel, p.dateLabel, p.opponent.name(), p.opponent.typeName(),
+                p.opponent.strength(), p.defender.name(), p.home, p.role.label(), p.selectionScore,
+                engine.liveTimeline(s), new ClutchView(moment.id(), moment.title(), moment.situation(),
+                p.session.momentMinute(), choices));
+    }
+
     private List<TraitView> traits(GameState s) {
         Modifiers m = engine.modifiers();
         List<Integer> tiers = config.rules().traits().tiers();
@@ -290,6 +308,7 @@ public class ViewMapper {
         }
         Events.EventDef def = config.event(pending.eventId()).orElseThrow();
         return new EventView(def.id(), def.axis().label(), def.title(), def.body(), pending.source(),
+                com.soccergame.domain.event.EventSource.valueOf(pending.source()).label(),
                 def.choices().stream().map(c -> new ChoiceView(c.text(),
                         c.trait() == null ? null : config.trait(c.trait()).name())).toList());
     }

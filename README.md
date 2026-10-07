@@ -37,7 +37,7 @@ node scripts/replay-check.mjs   # 실행 중인 서버로 1년을 두 번 진행
 ## 구조
 
 ```
-config/                 수치와 표 (게임 규칙, 훈련 메뉴, 장면표, 학교, 이벤트 30편)
+config/                 수치와 표 (게임 규칙, 훈련 메뉴, 장면표, 학교, 이벤트 60편, 승부처 10건)
 backend/domain          게임 규칙. Spring 에 의존하지 않는 순수 Java 모듈 + 단위 테스트
 backend/simulator       화면 없이 1년을 대량으로 돌리는 명령
 backend/api             Spring Boot API + PostgreSQL (판, 추가 전용 행동 기록)
@@ -57,15 +57,19 @@ ASSUMPTIONS.md          명세에 없어서 정한 규칙
 | --- | --- | --- |
 | POST | `/api/runs` | 새 판. 본문 `{ "seed": 42 }` (생략하면 무작위) |
 | GET | `/api/runs/{id}` | 현재 화면 상태 |
-| POST | `/api/runs/{id}/actions` | 행동 1개. `DAY` / `SUNDAY` / `EVENT_CHOICE` |
+| POST | `/api/runs/{id}/actions` | 행동 1개. `DAY` / `SUNDAY` / `EVENT_CHOICE` / `CLUTCH_CHOICE` |
 | GET | `/api/runs/{id}/actions` | 행동 기록 (순번, 종류, 요청 JSON) |
 
 행동 예시:
 
 ```json
-{ "type": "DAY", "dawn": "EXERCISE", "classAttitude": "TEACHER", "menus": { "AFTERNOON": "power" } }
+{ "type": "DAY", "dawn": "EXERCISE", "classAttitude": "QUESTION", "menus": { "AFTERNOON": "power" } }
 { "type": "SUNDAY", "activity": "MEET", "meetTarget": "coach" }
 { "type": "EVENT_CHOICE", "eventId": "coach_004", "choiceIndex": 1 }
+{ "type": "CLUTCH_CHOICE", "momentId": "clutch_05", "choiceIndex": 0 }
 ```
+
+경기 중 승부처가 나오면 서버는 그 직전까지만 계산하고 멈춥니다(`phase: MATCH`, `liveMatch` 에 지금까지의 중계와 선택지).
+`CLUTCH_CHOICE` 를 보내면 나머지 경기와 그날의 남은 일과를 계산합니다.
 
 `DAY` 에는 그날 바꾼 선택만 담습니다. 비어 있으면 전날 선택을 그대로 씁니다.

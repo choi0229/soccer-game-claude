@@ -19,10 +19,10 @@ class CompetitionsTest {
     @Test
     void cupWeekdayMatchReplacesAfternoonAndNight() {
         GameState s = ENGINE.newGame(1);
-        ENGINE.apply(s, Action.Day.keep());
-        ENGINE.apply(s, Action.Day.keep());
+        EngineTestSupport.day(s);
+        EngineTestSupport.day(s);
         assertThat(s.day).isEqualTo(Weekday.WED);
-        ActionOutcome out = ENGINE.apply(s, Action.Day.keep());
+        ActionOutcome out = EngineTestSupport.day(s);
         assertThat(out.match()).isNotNull();
         assertThat(out.match().competition()).isEqualTo(Competition.CUP);
         assertThat(out.match().roundLabel()).isEqualTo("32강");
@@ -36,17 +36,17 @@ class CompetitionsTest {
         for (long seed = 0; seed < 200; seed++) {
             GameState s = ENGINE.newGame(seed);
             for (int i = 0; i < 3; i++) {
-                ENGINE.apply(s, Action.Day.keep());
+                EngineTestSupport.day(s);
             }
             EngineTestSupport.resolveEvents(s);
             if (s.cup.isAlive(s.playerSchoolId)) {
                 continue;
             }
-            ENGINE.apply(s, Action.Day.keep()); // 목
+            EngineTestSupport.day(s); // 목
             EngineTestSupport.resolveEvents(s);
-            ENGINE.apply(s, Action.Day.keep()); // 금
+            EngineTestSupport.day(s); // 금
             EngineTestSupport.resolveEvents(s);
-            ActionOutcome sat = ENGINE.apply(s, Action.Day.keep());
+            ActionOutcome sat = EngineTestSupport.day(s);
             assertThat(sat.match()).isNull();
             assertThat(sat.log().getFirst().text()).contains("경기가 없는 토요일");
             // 다른 학교 대진은 계속 진행된다
@@ -75,7 +75,7 @@ class CompetitionsTest {
         s.stamina = 50;
         double coach = s.affinity.get(Axis.COACH);
         double passiveSum = ENGINE.config().passiveStatKeys().stream().mapToDouble(s.stats::get).sum();
-        ActionOutcome out = ENGINE.apply(s, Action.Day.keep());
+        ActionOutcome out = EngineTestSupport.day(s);
         MatchRecord m = out.match();
         assertThat(m.role()).isEqualTo(MatchRole.STARTER);
         assertThat(m.rating()).isNotNull();
@@ -99,7 +99,7 @@ class CompetitionsTest {
         s.affinity.put(Axis.COACH, 0.0);
         ENGINE.config().trainedStatKeys().forEach(k -> s.stats.set(k, 10));
         double stamina = s.stamina = 50;
-        MatchRecord bench = ENGINE.apply(s, Action.Day.keep()).match();
+        MatchRecord bench = EngineTestSupport.day(s).match();
         assertThat(bench.role()).isEqualTo(MatchRole.BENCH);
         assertThat(bench.rating()).isNull();
         assertThat(bench.scenes()).isEmpty();
@@ -109,7 +109,7 @@ class CompetitionsTest {
         t.week = ENGINE.calendar().weekIndex(4, 1);
         t.day = Weekday.SAT;
         t.injuredUntilDay = t.absoluteDay() + 7;
-        assertThat(ENGINE.apply(t, Action.Day.keep()).match().role()).isEqualTo(MatchRole.ABSENT);
+        assertThat(EngineTestSupport.day(t).match().role()).isEqualTo(MatchRole.ABSENT);
     }
 
     @Test

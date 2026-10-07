@@ -7,6 +7,7 @@ import com.soccergame.domain.config.Events;
 import com.soccergame.domain.config.Events.EventDef;
 import com.soccergame.domain.config.GameConfig;
 import com.soccergame.domain.engine.Action;
+import com.soccergame.domain.event.EventSource;
 import com.soccergame.domain.engine.ActionOutcome;
 import com.soccergame.domain.engine.GameEngine;
 import com.soccergame.domain.engine.GameState;
@@ -45,12 +46,12 @@ class EventEngineTest {
     }
 
     @Test
-    void repeatableEventHasFourWeekCooldown() {
+    void repeatableEventHasSixWeekCooldown() {
         GameState s = semester(1);
         assertThat(eligible(s, "family_001")).isTrue();
         s.eventLastWeek.put("family_001", s.week);
         assertThat(eligible(s, "family_001")).isFalse();
-        s.week += 3;
+        s.week += 5;
         assertThat(eligible(s, "family_001")).isFalse();
         s.week += 1;
         assertThat(eligible(s, "family_001")).isTrue();
@@ -107,6 +108,9 @@ class EventEngineTest {
         s.week = engine.calendar().weekIndex(4, 1);
         s.day = Weekday.SAT;
         engine.apply(s, Action.Day.keep());
+        if (engine.phase(s) == com.soccergame.domain.engine.Phase.MATCH) {
+            engine.apply(s, new Action.ClutchChoice(s.pendingMatch.session.moment().id(), 0));
+        }
         String role = s.lastMatch().role().name();
         assertThat(eligible(s, "coach_005")).isEqualTo(role.equals("SUB"));
         assertThat(eligible(s, "coach_006")).isEqualTo(role.equals("STARTER"));
@@ -117,8 +121,8 @@ class EventEngineTest {
         GameState s = semester(1);
         s.week = 0;
         // 감독 축에서 1주차에 조건을 만족하는 것은 coach_001 뿐
-        assertThat(events.eligible(s, Axis.COACH)).extracting(EventDef::id).containsExactly("coach_001");
-        events.trigger(s, Axis.COACH, "MEET");
+        assertThat(events.eligible(s, Axis.COACH, EventSource.MEET)).extracting(EventDef::id).containsExactly("coach_001");
+        events.trigger(s, Axis.COACH, EventSource.MEET);
         assertThat(s.flags).contains("met_coach");
         assertThat(s.pendingEvents.peekFirst().eventId()).isEqualTo("coach_001");
         assertThat(engine.phase(s)).isEqualTo(Phase.EVENT);
@@ -130,14 +134,14 @@ class EventEngineTest {
         for (EventDef e : config.events().events()) {
             s.eventLastWeek.put(e.id(), s.week);
         }
-        assertThat(events.trigger(s, null, "SUNDAY")).isEmpty();
+        assertThat(events.trigger(s, null, EventSource.SUNDAY)).isEmpty();
         assertThat(s.pendingEvents).isEmpty();
     }
 
     @Test
     void pendingEventBlocksProgressUntilChosen() {
         GameState s = semester(2);
-        events.trigger(s, Axis.FAMILY, "MEET");
+        events.trigger(s, Axis.FAMILY, EventSource.MEET);
         String id = s.pendingEvents.peekFirst().eventId();
         assertThatThrownBy(() -> engine.apply(s, Action.Day.keep())).isInstanceOf(InvalidActionException.class);
         assertThatThrownBy(() -> engine.apply(s, new Action.EventChoice("wrong", 0))).isInstanceOf(InvalidActionException.class);
@@ -151,7 +155,7 @@ class EventEngineTest {
         GameState s = semester(4);
         s.week = 0;
         s.stats.set("teamwork", 99.5);
-        events.trigger(s, Axis.COACH, "MEET");
+        events.trigger(s, Axis.COACH, EventSource.MEET);
         double coach = s.affinity.get(Axis.COACH);
         engine.apply(s, new Action.EventChoice("coach_001", 1)); // 감독 +3, 팀워크 +1
         assertThat(s.affinity.get(Axis.COACH)).isEqualTo(coach + 3);
@@ -190,6 +194,8 @@ class EventEngineTest {
         for (long seed = 0; seed < n; seed++) {
             GameState s = semester(seed);
             engine.apply(s, new Action.Day(DawnChoice.SLEEP, ClassAttitude.FRIENDS, Map.of()));
+            // 훈련 중 이벤트(5%)도 나올 수 있으므로 수업에서 나온 것만 센다
+            s.pendingEvents.removeIf(p -> !p.source().equals("CLASS"));
             if (!s.pendingEvents.isEmpty()) {
                 fired++;
                 assertThat(def(s.pendingEvents.peekFirst().eventId()).axis()).isEqualTo(Axis.FRIEND);
@@ -201,8 +207,9 @@ class EventEngineTest {
         GameState s = semester(1);
         for (ClassAttitude a : List.of(ClassAttitude.FOCUS, ClassAttitude.DOZE, ClassAttitude.QUESTION)) {
             engine.apply(s, new Action.Day(null, a, Map.of()));
+            assertThat(s.pendingEvents).noneMatch(p -> p.source().equals("CLASS"));
+            s.pendingEvents.clear();
         }
-        assertThat(s.eventHistory).isEmpty();
     }
 
     @Test
@@ -246,12 +253,12 @@ class EventEngineTest {
     void choosingTraitChoiceRaisesScore() {
         GameState s = semester(4);
         s.week = 0;
-        events.trigger(s, Axis.COACH, "MEET");
+        events.trigger(s, Axis.COACH, EventSource.MEET);
         engine.apply(s, new Action.EventChoice("coach_001", 0));
         assertThat(s.traitScores).containsEntry("competitor", 1);
         GameState t = semester(4);
         t.week = 0;
-        events.trigger(t, Axis.COACH, "MEET");
+        events.trigger(t, Axis.COACH, EventSource.MEET);
         engine.apply(t, new Action.EventChoice("coach_001", 2));
         assertThat(t.traitScores.values()).allMatch(v -> v == 0);
     }
@@ -278,5 +285,71 @@ class EventEngineTest {
         assertThat(all).anyMatch(f -> f.girlfriendAffinity() != null);
         assertThat(all).anyMatch(f -> f.unlockAxis() == Axis.GIRLFRIEND);
         assertThat(all).anyMatch(f -> f.reputation() != null);
+    }
+
+    @Test
+    void trainingEventsOnlyFromTrainingSlotsAboutFivePercent() {
+        int team = 0;
+        int night = 0;
+        int n = 3000;
+        for (long seed = 0; seed < n; seed++) {
+            GameState s = semester(seed);
+            s.stamina = 90;
+            engine.apply(s, new Action.Day(DawnChoice.SLEEP, ClassAttitude.DOZE, Map.of()));
+            for (var p : s.pendingEvents) {
+                if (p.source().equals("TEAM_TRAINING")) {
+                    team++;
+                    assertThat(def(p.eventId()).trigger().sources()).contains(EventSource.TEAM_TRAINING);
+                }
+                if (p.source().equals("NIGHT_TRAINING")) {
+                    night++;
+                    assertThat(def(p.eventId()).trigger().sources()).contains(EventSource.NIGHT_TRAINING);
+                }
+            }
+        }
+        assertThat((double) team / n).isBetween(0.035, 0.065);
+        assertThat((double) night / n).isBetween(0.035, 0.065);
+        // 다른 경로에서는 훈련 이벤트가 나오지 않는다
+        GameState s = semester(1);
+        assertThat(events.eligible(s, null, EventSource.SUNDAY))
+                .noneMatch(e -> e.trigger() != null && e.trigger().sources() != null);
+    }
+
+    @Test
+    void noTrainingEventOnInjuredOrMakeupSlots() {
+        for (long seed = 0; seed < 500; seed++) {
+            GameState s = semester(seed);
+            s.injuredUntilDay = s.absoluteDay() + 7;
+            s.makeupWeeks.put(s.week, 20.0);
+            engine.apply(s, new Action.Day(DawnChoice.SLEEP, ClassAttitude.DOZE, Map.of()));
+            assertThat(s.pendingEvents).noneMatch(p -> p.source().endsWith("TRAINING"));
+        }
+    }
+
+    @Test
+    void lastMatchConditionsAndSundayPriority() {
+        GameState s = semester(7);
+        assertThat(eligible(s, "match_001")).isFalse();
+        // 직전 경기: 이번 주, 승리, 골 1
+        var record = new com.soccergame.domain.match.MatchRecord(com.soccergame.domain.model.Competition.LEAGUE,
+                "1라운드", 10, "x", 2, "상대", 50, "파이터형", true, com.soccergame.domain.model.MatchRole.STARTER, 40,
+                1, 0, 1, 0, 0, 0, 2, 0, null, "W", 7.0, 0, null, null, java.util.List.of(), java.util.List.of(), null);
+        s.week = 10;
+        s.matches.add(record);
+        assertThat(eligible(s, "match_001")).isTrue();   // 승리
+        assertThat(eligible(s, "match_002")).isFalse();  // 패배 조건
+        assertThat(eligible(s, "match_004")).isTrue();   // 공격 포인트 있음
+        assertThat(eligible(s, "match_005")).isFalse();  // 공격 포인트 없음
+        // 경기가 있던 주의 일요일 무작위 이벤트는 경기 전후 이벤트에서 고른다
+        for (int i = 0; i < 20; i++) {
+            GameState t = semester(7 + i);
+            t.week = 10;
+            t.matches.add(record);
+            events.trigger(t, null, EventSource.SUNDAY);
+            assertThat(def(t.pendingEvents.peekFirst().eventId()).trigger().isMatchEvent()).isTrue();
+        }
+        // 18주차 이후에는 나오지 않는다
+        s.week = 20;
+        assertThat(eligible(s, "match_001")).isFalse();
     }
 }

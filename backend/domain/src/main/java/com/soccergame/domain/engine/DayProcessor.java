@@ -6,6 +6,7 @@ import com.soccergame.domain.config.GameConfig;
 import com.soccergame.domain.config.Rules;
 import com.soccergame.domain.config.TrainingMenus.TrainingMenu;
 import com.soccergame.domain.event.EventEngine;
+import com.soccergame.domain.event.EventSource;
 import com.soccergame.domain.match.MatchRecord;
 import com.soccergame.domain.model.Axis;
 import com.soccergame.domain.model.ClassAttitude;
@@ -70,26 +71,62 @@ final class DayProcessor {
 
         dawn(s, log);
         if (vacation) {
-            trainingSlot(s, log, MORNING, Kind.TEAM, TrainingSlot.MORNING);
+            trainingSlot(s, log, MORNING, Kind.TEAM, TrainingSlot.MORNING, newEvents);
         } else {
             classSlot(s, log, newEvents);
         }
 
-        MatchRecord match = null;
         int cupRound = calendar.cupRound(s.week, s.day);
         boolean playerInCup = cupRound >= 0 && s.cup.isAlive(s.playerSchoolId);
         if (cupRound >= 0) {
-            match = competitions.playCupRound(s, cupRound, calendar.label(s.week, s.day));
-        }
-        if (playerInCup) {
-            log.add(new LogEntry("오후·야간", calendar.cupName() + " " + matchSummary(match)));
-        } else {
-            if (s.makeupWeeks.containsKey(s.week)) {
-                makeup(s, log);
-            } else {
-                trainingSlot(s, log, AFTERNOON, Kind.TEAM, TrainingSlot.AFTERNOON);
+            Competitions.RoundOutcome round = competitions.playCupRound(s, cupRound, date);
+            if (round.paused()) {
+                return pause(s, round.pending(), PendingMatch.DayKind.WEEKDAY, date, log, newEvents);
             }
-            trainingSlot(s, log, NIGHT, Kind.PERSONAL, TrainingSlot.NIGHT);
+            if (playerInCup) {
+                return afterMatch(s, PendingMatch.DayKind.WEEKDAY, date, log, newEvents, round.record());
+            }
+        }
+        if (s.makeupWeeks.containsKey(s.week)) {
+            makeup(s, log);
+        } else {
+            trainingSlot(s, log, AFTERNOON, Kind.TEAM, TrainingSlot.AFTERNOON, newEvents);
+        }
+        trainingSlot(s, log, NIGHT, Kind.PERSONAL, TrainingSlot.NIGHT, newEvents);
+        endOfDay(s, log);
+        return new ActionOutcome(date, log, null, newEvents);
+    }
+
+    /** 경기가 승부처에서 멈췄다: 그날 나머지는 선택을 받은 뒤 afterMatch 로 처리한다 */
+    private ActionOutcome pause(GameState s, PendingMatch pending, PendingMatch.DayKind kind, String date,
+                                List<LogEntry> log, List<String> newEvents) {
+        pending.dayKind = kind;
+        pending.log = new ArrayList<>(log);
+        pending.newEvents = new ArrayList<>(newEvents);
+        s.pendingMatch = pending;
+        List<LogEntry> shown = new ArrayList<>(log);
+        shown.add(new LogEntry("경기", "승부처! 선택을 기다리는 중"));
+        return new ActionOutcome(date, shown, null, newEvents, true);
+    }
+
+    /** 멈춘 경기의 승부처 선택을 받아 경기를 끝내고 그날 나머지를 처리한다 */
+    ActionOutcome resumeMatch(GameState s, int choiceIndex) {
+        PendingMatch pending = s.pendingMatch;
+        MatchRecord record = competitions.resolve(s, pending, choiceIndex);
+        s.pendingMatch = null;
+        return afterMatch(s, pending.dayKind, pending.dateLabel, pending.log, pending.newEvents, record);
+    }
+
+    /** 플레이어 경기 뒤의 하루 마무리 (평일: 밤, 토요일: 컨디션 판정과 밤) */
+    private ActionOutcome afterMatch(GameState s, PendingMatch.DayKind kind, String date, List<LogEntry> logSoFar,
+                                     List<String> newEvents, MatchRecord match) {
+        List<LogEntry> log = new ArrayList<>(logSoFar);
+        String competition = match.competition() == com.soccergame.domain.model.Competition.CUP
+                ? calendar.cupName() : "주말리그";
+        log.add(new LogEntry(kind == PendingMatch.DayKind.WEEKDAY ? "오후·야간" : "경기",
+                competition + " " + matchSummary(match)));
+        if (kind == PendingMatch.DayKind.SATURDAY) {
+            saturdayConditionCheck(s, log);
         }
         endOfDay(s, log);
         return new ActionOutcome(date, log, match, newEvents);
@@ -141,7 +178,7 @@ final class DayProcessor {
         }
         log.add(new LogEntry(MORNING, rule.name() + ": " + String.join(", ", parts)));
         if (rule.friendEventChance() > 0 && s.rng.chance(rule.friendEventChance())) {
-            events.trigger(s, Axis.FRIEND, "CLASS").ifPresent(e -> newEvents.add(e.id()));
+            events.trigger(s, Axis.FRIEND, EventSource.CLASS).ifPresent(e -> newEvents.add(e.id()));
         }
     }
 
@@ -173,7 +210,8 @@ final class DayProcessor {
         return true;
     }
 
-    private void trainingSlot(GameState s, List<LogEntry> log, String slotName, Kind kind, TrainingSlot slot) {
+    private void trainingSlot(GameState s, List<LogEntry> log, String slotName, Kind kind, TrainingSlot slot,
+                              List<String> newEvents) {
         if (s.isInjured()) {
             log.add(new LogEntry(slotName, "재활 (" + kind.label + " 대신)"));
             return;
@@ -200,6 +238,11 @@ final class DayProcessor {
         log.add(new LogEntry(slotName, kind.label + " [" + menu.name() + "] " + String.join(", ", parts)
                 + bonusText(bonus) + ", 체력 " + Resources.signed(st.stamina())));
         injuryRoll(s, log, slotName, risky);
+        EventSource source = slot == TrainingSlot.AFTERNOON ? EventSource.TEAM_TRAINING
+                : slot == TrainingSlot.NIGHT ? EventSource.NIGHT_TRAINING : null;
+        if (source != null && !s.isInjured() && s.rng.chance(rules.events().trainingChance())) {
+            events.trigger(s, null, source).ifPresent(e -> newEvents.add(e.id()));
+        }
     }
 
     /** 예: " (승부사 +5%, 감독 인연 +3%)" 또는 상한에 걸리면 " (… 합계 +36% → 상한 +30%)" */
@@ -234,30 +277,33 @@ final class DayProcessor {
 
     ActionOutcome saturday(GameState s) {
         List<LogEntry> log = new ArrayList<>();
+        List<String> newEvents = new ArrayList<>();
         String date = calendar.label(s.week, s.day);
         s.excludedToday = false;
-        MatchRecord match = null;
         int cupRound = calendar.cupRound(s.week, s.day);
+        Competitions.RoundOutcome round = null;
         if (cupRound >= 0) {
-            boolean playerInCup = s.cup.isAlive(s.playerSchoolId);
-            MatchRecord m = competitions.playCupRound(s, cupRound, date);
-            if (playerInCup) {
-                match = m;
-                log.add(new LogEntry("경기", calendar.cupName() + " " + matchSummary(m)));
-            }
+            round = competitions.playCupRound(s, cupRound, date);
         } else if (s.day == calendar.leagueMatchDay() && calendar.leagueRound(s.week) > 0) {
-            match = competitions.playLeagueRound(s, calendar.leagueRound(s.week), date);
-            log.add(new LogEntry("경기", "주말리그 " + matchSummary(match)));
+            round = competitions.playLeagueRound(s, calendar.leagueRound(s.week), date);
         }
-        if (match == null) {
-            log.add(new LogEntry("토요일", "경기가 없는 토요일. 조용히 지나갔다."));
+        if (round != null && round.paused()) {
+            return pause(s, round.pending(), PendingMatch.DayKind.SATURDAY, date, log, newEvents);
         }
+        if (round != null && round.record() != null) {
+            return afterMatch(s, PendingMatch.DayKind.SATURDAY, date, log, newEvents, round.record());
+        }
+        log.add(new LogEntry("토요일", "경기가 없는 토요일. 조용히 지나갔다."));
+        saturdayConditionCheck(s, log);
+        endOfDay(s, log);
+        return new ActionOutcome(date, log, null, newEvents);
+    }
+
+    private void saturdayConditionCheck(GameState s, List<LogEntry> log) {
         if (s.stamina < rules.condition().saturdayDropBelowStamina()) {
             resources.condition(s, -1);
             log.add(new LogEntry("토요일", "체력이 떨어진 채 한 주를 마쳐 컨디션이 한 단계 내려갔다."));
         }
-        endOfDay(s, log);
-        return new ActionOutcome(date, log, match, List.of());
     }
 
     // ---------------- 일요일 ----------------
@@ -292,12 +338,12 @@ final class DayProcessor {
                 resources.affinity(s, meetTarget, sr.meet().affinity());
                 log.add(new LogEntry("일요일", meetTarget.label() + "을(를) 만났다: " + meetTarget.label() + " 관계도 "
                         + Resources.signed(sr.meet().affinity())));
-                events.trigger(s, meetTarget, "MEET").ifPresent(e -> newEvents.add(e.id()));
+                events.trigger(s, meetTarget, EventSource.MEET).ifPresent(e -> newEvents.add(e.id()));
             }
         }
         // 무작위 이벤트는 밤 회복 전에 뽑는다
         if (s.rng.chance(rules.events().sundayChance())) {
-            events.trigger(s, null, "SUNDAY").ifPresent(e -> newEvents.add(e.id()));
+            events.trigger(s, null, EventSource.SUNDAY).ifPresent(e -> newEvents.add(e.id()));
         }
         sundayNight(s, log, activityStamina, activityDelta, staminaBefore);
         endOfWeek(s, log, metGirlfriend);

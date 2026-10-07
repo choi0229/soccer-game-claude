@@ -13,6 +13,7 @@ import com.soccergame.domain.model.TrainingSlot;
 import com.soccergame.domain.random.Rng;
 
 import com.soccergame.domain.config.Events;
+import com.soccergame.domain.match.ClutchOption;
 import com.soccergame.domain.config.Events.EventDef;
 
 import java.util.ArrayList;
@@ -131,6 +132,12 @@ public final class Strategies {
 
         ClassAttitude classAttitude(GameState s) {
             return s.academics < 40 ? ClassAttitude.FOCUS : ClassAttitude.DOZE;
+        }
+
+        /** 승부처는 성공 확률이 가장 높은 선택지 (학업 방치·성장 극대화도 물려받는다) */
+        @Override
+        public int clutchChoice(GameState s, List<ClutchOption> options, Rng choice) {
+            return Strategy.safest(options);
         }
 
         @Override

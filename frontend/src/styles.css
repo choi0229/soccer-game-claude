@@ -111,3 +111,18 @@ tr.clickable:hover { background: var(--bg); }
 @media (prefers-color-scheme: dark) { .warning { background: #3b2f00; color: #ffe08a; } }
 .trait-badge { margin-left: 8px; padding: 1px 6px; border-radius: 8px; font-size: 11px; background: rgba(31, 111, 235, 0.15); color: var(--accent); }
 tr.locked td { color: var(--muted); }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(10, 14, 20, 0.55); display: flex; align-items: flex-start; justify-content: center; padding: 32px 16px; overflow-y: auto; z-index: 10; }
+.modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; width: min(760px, 100%); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3); }
+.modal .timeline { max-height: 46vh; }
+.prob { font-size: 12px; margin-left: 34px; color: var(--text); }
+.choices { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.choices button { width: 100%; text-align: left; line-height: 1.5; }
+.choice-no { font-weight: 700; margin-right: 4px; }
+.clutch { border: 2px solid #d4a017; border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: rgba(212, 160, 23, 0.08); }
+.clutch-title { font-weight: 700; color: #b8860b; }
+.style-tag { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 700; color: #fff; }
+.style-tag.AGGRESSIVE { background: #cf222e; }
+.style-tag.BALANCED { background: #1f6feb; }
+.style-tag.SAFE { background: #1a7f37; }
+.timeline .CLUTCH { color: #b8860b; font-weight: 600; }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; z-index: 20; }

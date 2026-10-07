@@ -3,6 +3,7 @@ package com.soccergame.domain.event;
 import com.soccergame.domain.TestConfig;
 import com.soccergame.domain.config.Events.Effects;
 import com.soccergame.domain.config.Events.EventDef;
+import com.soccergame.domain.event.EventSource;
 import com.soccergame.domain.model.Axis;
 import org.junit.jupiter.api.Test;
 
@@ -17,13 +18,31 @@ class EventContentTest {
     private final List<EventDef> events = TestConfig.load().events().events();
 
     @Test
-    void thirtySixEventsWithRequiredAxisCounts() {
-        assertThat(events).hasSize(36);
+    void sixtyEventsWithRequiredAxisCounts() {
+        assertThat(events).hasSize(60);
         Map<Axis, Long> byAxis = events.stream().collect(Collectors.groupingBy(EventDef::axis, Collectors.counting()));
-        assertThat(byAxis).containsEntry(Axis.COACH, 8L).containsEntry(Axis.TEAMMATE, 8L)
-                .containsEntry(Axis.FAMILY, 5L).containsEntry(Axis.FRIEND, 7L).containsEntry(Axis.GIRLFRIEND, 5L)
-                .containsEntry(Axis.COMMON, 3L);
-        assertThat(events.stream().map(EventDef::id).distinct()).hasSize(36);
+        assertThat(byAxis).containsEntry(Axis.COACH, 15L).containsEntry(Axis.TEAMMATE, 15L)
+                .containsEntry(Axis.FAMILY, 8L).containsEntry(Axis.FRIEND, 8L).containsEntry(Axis.GIRLFRIEND, 6L)
+                .containsEntry(Axis.COMMON, 8L);
+        assertThat(events.stream().map(EventDef::id).distinct()).hasSize(60);
+    }
+
+    @Test
+    void trainingAndMatchEventCounts() {
+        long team = events.stream().filter(e -> sources(e).contains(EventSource.TEAM_TRAINING)).count();
+        long night = events.stream().filter(e -> sources(e).contains(EventSource.NIGHT_TRAINING)).count();
+        assertThat(team).isEqualTo(5);
+        assertThat(night).isEqualTo(5);
+        events.stream().filter(e -> sources(e).contains(EventSource.TEAM_TRAINING))
+                .forEach(e -> assertThat(e.axis()).as(e.id()).isIn(Axis.COACH, Axis.TEAMMATE));
+        events.stream().filter(e -> sources(e).contains(EventSource.NIGHT_TRAINING))
+                .forEach(e -> assertThat(e.axis()).as(e.id()).isIn(Axis.TEAMMATE, Axis.COMMON));
+        assertThat(events.stream().filter(e -> e.triggerOrEmpty().isMatchEvent())).hasSize(6);
+    }
+
+    private static List<EventSource> sources(EventDef e) {
+        List<EventSource> s = e.triggerOrEmpty().sources();
+        return s == null ? List.of() : s;
     }
 
     @Test
@@ -62,17 +81,12 @@ class EventContentTest {
     }
 
     @Test
-    void traitsDifferWithinEventAndAreBalanced() {
-        Map<String, Integer> counts = new java.util.HashMap<>();
+    void traitsDifferWithinEvent() {
+        // 점수 균형(무작위 전략 연간 평균 ±20%)은 시뮬레이터 테스트에서 확인한다
         for (EventDef e : events) {
             List<String> traits = e.choices().stream().map(c -> c.trait()).filter(java.util.Objects::nonNull).toList();
             assertThat(traits).as(e.id()).doesNotHaveDuplicates();
-            traits.forEach(t -> counts.merge(t, 1, Integer::sum));
         }
-        assertThat(counts).containsOnlyKeys("hardWorker", "competitor", "teamPlayer", "modelStudent");
-        int max = counts.values().stream().max(Integer::compare).orElseThrow();
-        int min = counts.values().stream().min(Integer::compare).orElseThrow();
-        assertThat(max - min).isLessThanOrEqualTo(2);
     }
 
     @Test

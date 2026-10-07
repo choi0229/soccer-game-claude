@@ -23,12 +23,20 @@ public final class EventEngine {
         this.calendar = calendar;
     }
 
-    /** 지금 발생할 수 있는 이벤트 (설정 파일 순서). axis 가 null 이면 모든 축. */
+    /** 지금 발생할 수 있는 이벤트 (설정 파일 순서). axis 가 null 이면 모든 축. 나오는 곳은 따지지 않는다. */
     public List<EventDef> eligible(GameState s, Axis axis) {
+        return eligible(s, axis, null);
+    }
+
+    /** source 에서 나올 수 있는 이벤트. source 가 null 이면 나오는 곳을 따지지 않는다. */
+    public List<EventDef> eligible(GameState s, Axis axis, EventSource source) {
         List<EventDef> list = new ArrayList<>();
         int cooldown = config.rules().events().cooldownWeeks();
         for (EventDef e : config.events().events()) {
             if (axis != null && e.axis() != axis) {
+                continue;
+            }
+            if (!sourceAllows(e, source)) {
                 continue;
             }
             Integer last = s.eventLastWeek.get(e.id());
@@ -45,16 +53,37 @@ public final class EventEngine {
         return list;
     }
 
-    /** 조건을 만족한 이벤트 중 1편을 게임 판정 난수로 골라 대기열에 넣는다. 없으면 아무 일도 없다. */
-    public Optional<EventDef> trigger(GameState s, Axis axis, String source) {
-        List<EventDef> candidates = eligible(s, axis);
+    private static boolean sourceAllows(EventDef e, EventSource source) {
+        if (source == null) {
+            return true;
+        }
+        List<EventSource> sources = e.triggerOrEmpty().sources();
+        if (sources == null || sources.isEmpty()) {
+            return !source.requiresExplicitSource();
+        }
+        return sources.contains(source);
+    }
+
+    /**
+     * 조건을 만족한 이벤트 중 1편을 게임 판정 난수로 골라 대기열에 넣는다. 없으면 아무 일도 없다.
+     * 경기가 있던 주의 일요일에는 경기 전후 이벤트(직전 경기 조건이 있는 이벤트)를 먼저 고른다.
+     */
+    public Optional<EventDef> trigger(GameState s, Axis axis, EventSource source) {
+        List<EventDef> candidates = eligible(s, axis, source);
+        MatchRecord last = s.lastMatch();
+        if (source == EventSource.SUNDAY && last != null && last.week() == s.week) {
+            List<EventDef> matchEvents = candidates.stream().filter(e -> e.triggerOrEmpty().isMatchEvent()).toList();
+            if (!matchEvents.isEmpty()) {
+                candidates = matchEvents;
+            }
+        }
         if (candidates.isEmpty()) {
             return Optional.empty();
         }
         EventDef chosen = s.rng.pick(candidates);
         s.eventLastWeek.put(chosen.id(), s.week);
         s.flags.addAll(chosen.flagsOrEmpty());
-        s.pendingEvents.addLast(new PendingEvent(chosen.id(), source));
+        s.pendingEvents.addLast(new PendingEvent(chosen.id(), source.name()));
         s.eventHistory.add(chosen.id());
         return Optional.of(chosen);
     }
@@ -65,6 +94,17 @@ public final class EventEngine {
         if (t.maxWeek() != null && weekNumber > t.maxWeek()) return false;
         if (t.vacation() != null && calendar.isVacation(s.week) != t.vacation()) return false;
         if (t.injured() != null && s.isInjured() != t.injured()) return false;
+        if (t.lastMatchResult() != null) {
+            MatchRecord last = s.lastMatch();
+            if (last == null || t.lastMatchResult().stream().noneMatch(r -> r.code().equals(last.result()))) {
+                return false;
+            }
+        }
+        if (t.lastMatchContributed() != null) {
+            MatchRecord last = s.lastMatch();
+            boolean contributed = last != null && last.playerGoals() + last.playerAssists() > 0;
+            if (last == null || contributed != t.lastMatchContributed()) return false;
+        }
         if (t.lastMatchRole() != null) {
             MatchRecord last = s.lastMatch();
             if (last == null || last.role() != t.lastMatchRole()) return false;

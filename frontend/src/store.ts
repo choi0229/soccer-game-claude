@@ -28,12 +28,14 @@ interface UiState {
   setSundayActivity: (v: string) => void;
   setMeetTarget: (v: string) => void;
 
-  /** 경기 중계 재생: 판의 몇 번째 경기를 몇 줄까지 보여 줬는지 */
-  playback: { matchIndex: number; shown: number; skipped: boolean } | null;
-  startPlayback: (matchIndex: number) => void;
+  /**
+   * 경기 중계 모달: target 은 진행 중 경기('live') 또는 판의 몇 번째 경기, shown 은 지금까지 보여 준 줄 수.
+   */
+  playback: { target: 'live' | number; shown: number } | null;
+  startLive: () => void;
+  startPlayback: (matchIndex: number, shown?: number) => void;
   showMatch: (matchIndex: number) => void;
-  advancePlayback: () => void;
-  skipPlayback: () => void;
+  setShown: (shown: number) => void;
   clearPlayback: () => void;
 
   /** 오른쪽 패널 탭 */
@@ -61,11 +63,11 @@ export const useUiStore = create<UiState>()(
       setMeetTarget: (meetTarget) => set({ meetTarget }),
 
       playback: null,
-      startPlayback: (matchIndex) => set({ playback: { matchIndex, shown: 1, skipped: false } }),
-      showMatch: (matchIndex) => set({ playback: { matchIndex, shown: 0, skipped: true } }),
+      startLive: () => set({ playback: { target: 'live', shown: 0 } }),
+      startPlayback: (matchIndex, shown = 0) => set({ playback: { target: matchIndex, shown } }),
+      showMatch: (matchIndex) => set({ playback: { target: matchIndex, shown: Number.MAX_SAFE_INTEGER } }),
+      setShown: (shown) => set((s) => (s.playback ? { playback: { ...s.playback, shown } } : {})),
       clearPlayback: () => set({ playback: null }),
-      advancePlayback: () => set((s) => (s.playback ? { playback: { ...s.playback, shown: s.playback.shown + 1 } } : {})),
-      skipPlayback: () => set((s) => (s.playback ? { playback: { ...s.playback, skipped: true } } : {})),
 
       sideTab: 'stats',
       setSideTab: (sideTab) => set({ sideTab }),

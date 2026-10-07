@@ -12,13 +12,14 @@ import java.util.Map;
 
 /**
  * 행동 요청. 이 JSON 이 그대로 run_actions.payload 에 기록되고, 재현할 때 다시 읽힌다.
- * type: DAY (그날 바꾼 선택만) / SUNDAY / EVENT_CHOICE
+ * type: DAY (그날 바꾼 선택만) / SUNDAY / EVENT_CHOICE / CLUTCH_CHOICE (경기 중 승부처)
  */
 public record ActionRequest(Type type, DawnChoice dawn, ClassAttitude classAttitude, Map<TrainingSlot, String> menus,
-                            SundayActivity activity, Axis meetTarget, String eventId, Integer choiceIndex) {
+                            SundayActivity activity, Axis meetTarget, String eventId, Integer choiceIndex,
+                            String momentId) {
 
     public enum Type {
-        DAY, SUNDAY, EVENT_CHOICE
+        DAY, SUNDAY, EVENT_CHOICE, CLUTCH_CHOICE
     }
 
     public Action toAction() {
@@ -33,6 +34,12 @@ public record ActionRequest(Type type, DawnChoice dawn, ClassAttitude classAttit
                     throw new InvalidActionException("eventId 와 choiceIndex 가 필요합니다");
                 }
                 yield new Action.EventChoice(eventId, choiceIndex);
+            }
+            case CLUTCH_CHOICE -> {
+                if (momentId == null || choiceIndex == null) {
+                    throw new InvalidActionException("momentId 와 choiceIndex 가 필요합니다");
+                }
+                yield new Action.ClutchChoice(momentId, choiceIndex);
             }
         };
     }

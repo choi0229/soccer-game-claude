@@ -29,6 +29,7 @@ public final class GameConfig {
     private final Scenes scenes;
     private final Schools schools;
     private final Events events;
+    private final ClutchMoments clutchMoments;
 
     private final Map<String, StatDef> statsByKey = new LinkedHashMap<>();
     private final List<String> trainedKeys = new ArrayList<>();
@@ -40,12 +41,14 @@ public final class GameConfig {
     private final Map<String, DefenderTypeDef> defenderTypesByKey = new LinkedHashMap<>();
     private final Map<String, Rules.TraitDef> traitsByKey = new LinkedHashMap<>();
 
-    public GameConfig(Rules rules, TrainingMenus trainingMenus, Scenes scenes, Schools schools, Events events) {
+    public GameConfig(Rules rules, TrainingMenus trainingMenus, Scenes scenes, Schools schools, Events events,
+                      ClutchMoments clutchMoments) {
         this.rules = rules;
         this.trainingMenus = trainingMenus;
         this.scenes = scenes;
         this.schools = schools;
         this.events = events;
+        this.clutchMoments = clutchMoments;
         rules.stats().trained().forEach(s -> {
             put(statsByKey, s.key(), s, "능력치");
             trainedKeys.add(s.key());
@@ -73,7 +76,7 @@ public final class GameConfig {
     public GameConfig withPlayerSchoolType(String schoolType) {
         Schools s = new Schools(schools.regions(), schools.types(), schools.defenderTypes(),
                 new Schools.PlayerSchool(schoolType, schools.player().region()), schools.nameParts());
-        return new GameConfig(rules, trainingMenus, scenes, s, events);
+        return new GameConfig(rules, trainingMenus, scenes, s, events, clutchMoments);
     }
 
     private void validate() {
@@ -126,6 +129,7 @@ public final class GameConfig {
                 throw new ConfigException("특성 " + t.key() + " 의 단계 수가 맞지 않습니다");
             }
         }
+        validateClutchMoments();
         int bondTiers = rules.bonds().tiers().size();
         for (Rules.BondDef b : rules.bonds().axes()) {
             if (b.axis() == null || !b.axis().hasAffinity()) {
@@ -153,6 +157,53 @@ public final class GameConfig {
                 }
             }
         }
+    }
+
+    private void validateClutchMoments() {
+        for (ClutchMoments.Style style : ClutchMoments.Style.values()) {
+            if (clutchMoments.styles() == null || !clutchMoments.styles().containsKey(style)) {
+                throw new ConfigException("승부처 선택지 유형 이름이 없습니다: " + style);
+            }
+        }
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (ClutchMoments.MomentDef m : clutchMoments.moments()) {
+            if (!ids.add(m.id())) {
+                throw new ConfigException("승부처 id 중복: " + m.id());
+            }
+            if (m.choices() == null || m.choices().size() < 2 || m.choices().size() > 3) {
+                throw new ConfigException("승부처 선택지는 2~3개여야 합니다: " + m.id());
+            }
+            for (ClutchMoments.MomentChoice c : m.choices()) {
+                if (c.stats() == null || c.stats().isEmpty() || c.stats().size() > 2) {
+                    throw new ConfigException("승부처 판정 능력치는 1~2개여야 합니다: " + m.id());
+                }
+                c.stats().forEach(k -> requireStat(k, "승부처 " + m.id()));
+                if (c.trait() != null && !traitsByKey.containsKey(c.trait())) {
+                    throw new ConfigException("승부처 " + m.id() + ": 알 수 없는 특성 " + c.trait());
+                }
+                ClutchMoments.Success sc = c.success();
+                if (sc.outcome() == ClutchMoments.Outcome.EXTRA_SHOT && !scenesById.containsKey(sc.extraScene())) {
+                    throw new ConfigException("승부처 " + m.id() + ": 추가 장면이 없습니다 " + sc.extraScene());
+                }
+                if (sc.outcome() == ClutchMoments.Outcome.TEAM_GOAL_CHANCE && sc.teamGoalChance() == null) {
+                    throw new ConfigException("승부처 " + m.id() + ": 팀 득점 확률이 없습니다");
+                }
+            }
+        }
+        // 어떤 전반/후반·스코어 상황에서도 고를 승부처가 있어야 한다
+        for (ClutchMoments.Half half : ClutchMoments.Half.values()) {
+            for (ClutchMoments.ScoreState score : ClutchMoments.ScoreState.values()) {
+                boolean covered = clutchMoments.moments().stream()
+                        .anyMatch(m -> m.condition().half() == half && m.condition().score() == score);
+                if (!covered) {
+                    throw new ConfigException("승부처가 없는 상황: " + half + " " + score);
+                }
+            }
+        }
+    }
+
+    public ClutchMoments clutchMoments() {
+        return clutchMoments;
     }
 
     private void validateBonus(Rules.TrainingBonus bonus, int tiers, String where) {

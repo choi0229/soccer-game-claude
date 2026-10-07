@@ -60,6 +60,14 @@ public final class StrategyReport {
     /** 축 → [잠김, 0, 1, 2, 3] 판 수 */
     final Map<Axis, int[]> bondTiers = new LinkedHashMap<>();
     final List<Double> girlfriendUnlockWeek = new ArrayList<>();
+    /** 승부처: 발생한 출전 경기 수, 유형별 선택·성공 수, 승부처 유무별 평점 합과 경기 수 */
+    int clutchMatches;
+    final Map<String, int[]> clutchStyle = new LinkedHashMap<>();
+    double ratingWithClutch;
+    double ratingWithoutClutch;
+    int appearancesWithoutClutch;
+    /** 이벤트별 한 판 최대 발생 횟수 */
+    final Map<String, Integer> eventMax = new LinkedHashMap<>();
     long menuTrainings;
     double bonusApplied;
     long bonusCapped;
@@ -114,6 +122,18 @@ public final class StrategyReport {
                 appearances++;
                 scenes += m.scenes().size();
                 ratingSum += m.rating();
+                if (m.clutch() != null) {
+                    clutchMatches++;
+                    ratingWithClutch += m.rating();
+                    int[] c = clutchStyle.computeIfAbsent(m.clutch().style().name(), k -> new int[2]);
+                    c[0]++;
+                    if (m.clutch().success()) {
+                        c[1]++;
+                    }
+                } else {
+                    appearancesWithoutClutch++;
+                    ratingWithoutClutch += m.rating();
+                }
             }
             if (m.role() == MatchRole.STARTER && firstStarter < 0) {
                 firstStarter = m.week() + 1;
@@ -157,6 +177,9 @@ public final class StrategyReport {
         bonusApplied += s.metrics.bonusApplied;
         bonusCapped += s.metrics.bonusCapped;
         s.eventHistory.forEach(id -> eventCounts.merge(id, 1, Integer::sum));
+        Map<String, Integer> thisRun = new LinkedHashMap<>();
+        s.eventHistory.forEach(id -> thisRun.merge(id, 1, Integer::sum));
+        thisRun.forEach((id, n) -> eventMax.merge(id, n, Math::max));
     }
 
     /** 1년 동안 한 번도 없었음을 나타내는 주차 */

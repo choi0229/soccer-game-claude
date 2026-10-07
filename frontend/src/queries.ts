@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useUiStore } from './store';
-import type { ActionOutcome, ActionRequest } from './types';
+import type { ActionOutcome, ActionRequest, GameView } from './types';
 
 // 서버가 준 값은 모두 TanStack Query 캐시에만 둔다.
 export const runKey = (runId: string) => ['run', runId] as const;
@@ -51,16 +51,25 @@ export function useAct(runId: string) {
   const queryClient = useQueryClient();
   const resetDraft = useUiStore((s) => s.resetDraft);
   const startPlayback = useUiStore((s) => s.startPlayback);
+  const startLive = useUiStore((s) => s.startLive);
   const clearPlayback = useUiStore((s) => s.clearPlayback);
   return useMutation({
     mutationFn: (action: ActionRequest) => api.act(runId, action),
     onSuccess: ({ view, outcome }, action) => {
+      const liveLength = queryClient.getQueryData<GameView>(runKey(runId))?.liveMatch?.timeline.length ?? 0;
       queryClient.setQueryData(runKey(runId), view);
-      queryClient.setQueryData<RecentOutcome[]>(outcomesKey(runId), (prev = []) =>
-        [{ actionCount: view.actionCount, outcome }, ...prev].slice(0, 10),
-      );
+      // 승부처에서 멈췄던 하루의 결과는 이어진 결과(그날 전체 기록)로 바꾼다
+      queryClient.setQueryData<RecentOutcome[]>(outcomesKey(runId), (prev = []) => {
+        const rest = prev.length > 0 && prev[0].outcome.partial ? prev.slice(1) : prev;
+        return [{ actionCount: view.actionCount, outcome }, ...rest].slice(0, 10);
+      });
       resetDraft();
-      if (outcome.match) {
+      if (view.liveMatch) {
+        startLive();
+      } else if (action.type === 'CLUTCH_CHOICE') {
+        // 승부처 직전까지의 줄 + 승부처 결과 한 줄을 바로 보여 준다
+        startPlayback(view.matches.length - 1, liveLength + 1);
+      } else if (outcome.match) {
         startPlayback(view.matches.length - 1);
       } else if (action.type !== 'EVENT_CHOICE') {
         clearPlayback();

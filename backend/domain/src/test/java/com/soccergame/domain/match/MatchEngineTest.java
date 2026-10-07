@@ -24,7 +24,7 @@ class MatchEngineTest {
     }
 
     private MatchEngine.Input input(Stats stats, MatchRole role, double opponent, boolean knockout) {
-        return new MatchEngine.Input(stats, role, 0, 40, opponent, "vsFighter", "파이터형", knockout);
+        return new MatchEngine.Input(stats, role, 0, 40, opponent, "vsFighter", "파이터형", knockout, false);
     }
 
     @Test
@@ -195,14 +195,14 @@ class MatchEngineTest {
     @Test
     void ratingFormula() {
         // 골 1, 도움 1, 그 밖 성공 1, 골 장면 실패 1, 그 밖 실패 1 → 6 + 1 + 0.7 + 0.3 - 0.1 - 0.2 = 7.7
-        MatchEngine.Result r = new MatchEngine.Result(0, 0, 1, 1, 0, 2, 0, null, List.of(), List.of(), 3, 2, 1);
+        MatchEngine.Result r = new MatchEngine.Result(0, 0, 1, 1, 0, 0, 2, 0, null, List.of(), List.of(), 3, 2, 1, 0, null);
         assertThat(engine.rating(r)).isEqualTo(7.7);
         // 골 장면 실패 5개 → 6 - 0.5
-        MatchEngine.Result misses = new MatchEngine.Result(0, 0, 0, 0, 0, 0, 0, null, List.of(), List.of(), 0, 5, 5);
+        MatchEngine.Result misses = new MatchEngine.Result(0, 0, 0, 0, 0, 0, 0, 0, null, List.of(), List.of(), 0, 5, 5, 0, null);
         assertThat(engine.rating(misses)).isEqualTo(5.5);
-        MatchEngine.Result bad = new MatchEngine.Result(0, 0, 0, 0, 0, 0, 0, null, List.of(), List.of(), 0, 20, 0);
+        MatchEngine.Result bad = new MatchEngine.Result(0, 0, 0, 0, 0, 0, 0, 0, null, List.of(), List.of(), 0, 20, 0, 0, null);
         assertThat(engine.rating(bad)).isEqualTo(3.0);
-        MatchEngine.Result great = new MatchEngine.Result(0, 0, 6, 0, 0, 6, 0, null, List.of(), List.of(), 6, 0, 0);
+        MatchEngine.Result great = new MatchEngine.Result(0, 0, 6, 0, 0, 0, 6, 0, null, List.of(), List.of(), 6, 0, 0, 0, null);
         assertThat(engine.rating(great)).isEqualTo(10.0);
     }
 

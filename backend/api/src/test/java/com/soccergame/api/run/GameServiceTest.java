@@ -27,7 +27,7 @@ class GameServiceTest {
     private final GameService service = new GameService(engine, repo, JsonMapper.builder().build());
 
     private static ActionRequest day(DawnChoice dawn, ClassAttitude attitude, Map<TrainingSlot, String> menus) {
-        return new ActionRequest(ActionRequest.Type.DAY, dawn, attitude, menus, null, null, null, null);
+        return new ActionRequest(ActionRequest.Type.DAY, dawn, attitude, menus, null, null, null, null, null);
     }
 
     /** 화면에서 하듯 요청을 보내며 1년을 진행한다. 선택은 주차에 따라 바꾼다. */
@@ -39,11 +39,13 @@ class GameServiceTest {
             Phase phase = engine.phase(s);
             ActionRequest request = switch (phase) {
                 case FINISHED -> null;
+                case MATCH -> new ActionRequest(ActionRequest.Type.CLUTCH_CHOICE, null, null, null, null, null, null,
+                        step % 2, s.pendingMatch.session.moment().id());
                 case EVENT -> new ActionRequest(ActionRequest.Type.EVENT_CHOICE, null, null, null, null, null,
-                        s.pendingEvents.peekFirst().eventId(), step % 2);
+                        s.pendingEvents.peekFirst().eventId(), step % 2, null);
                 case SUNDAY -> step % 3 == 0
-                        ? new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.MEET, Axis.COACH, null, null)
-                        : new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.REST, null, null, null);
+                        ? new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.MEET, Axis.COACH, null, null, null)
+                        : new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.REST, null, null, null, null);
                 default -> step % 5 == 0
                         ? day(DawnChoice.EXERCISE, ClassAttitude.FRIENDS, Map.of(TrainingSlot.NIGHT, "power"))
                         : day(null, null, Map.of());
@@ -73,16 +75,26 @@ class GameServiceTest {
     void actionsAreAppendedWithIncreasingSeq() {
         UUID id = service.create(1L).runId();
         service.act(id, day(DawnChoice.SLEEP, null, Map.of()));
+        // 훈련·수업 이벤트가 나왔으면 먼저 고른다
+        GameState s = service.load(id).state();
+        while (!s.pendingEvents.isEmpty()) {
+            service.act(id, new ActionRequest(ActionRequest.Type.EVENT_CHOICE, null, null, null, null, null,
+                    s.pendingEvents.peekFirst().eventId(), 0, null));
+            s = service.load(id).state();
+        }
         service.act(id, day(null, ClassAttitude.DOZE, Map.of(TrainingSlot.AFTERNOON, "aerial")));
-        assertThat(service.actions(id)).extracting(RunRepository.StoredAction::seq).containsExactly(1, 2);
-        assertThat(service.actions(id).get(1).payload()).contains("\"DOZE\"").contains("aerial");
+        var actions = service.actions(id);
+        for (int i = 0; i < actions.size(); i++) {
+            assertThat(actions.get(i).seq()).isEqualTo(i + 1);
+        }
+        assertThat(actions.getLast().payload()).contains("\"DOZE\"").contains("aerial");
     }
 
     @Test
     void rejectedActionIsNotRecorded() {
         UUID id = service.create(1L).runId();
         assertThatThrownBy(() -> service.act(id,
-                new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.REST, null, null, null)))
+                new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.REST, null, null, null, null)))
                 .isInstanceOf(InvalidActionException.class);
         assertThat(service.actions(id)).isEmpty();
     }
@@ -94,9 +106,11 @@ class GameServiceTest {
         for (int i = 0; i < 12; i++) {
             GameState s = service.load(id).state();
             ActionRequest r = switch (engine.phase(s)) {
+                case MATCH -> new ActionRequest(ActionRequest.Type.CLUTCH_CHOICE, null, null, null, null, null, null,
+                        0, s.pendingMatch.session.moment().id());
                 case EVENT -> new ActionRequest(ActionRequest.Type.EVENT_CHOICE, null, null, null, null, null,
-                        s.pendingEvents.peekFirst().eventId(), 0);
-                case SUNDAY -> new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.PART_TIME, null, null, null);
+                        s.pendingEvents.peekFirst().eventId(), 0, null);
+                case SUNDAY -> new ActionRequest(ActionRequest.Type.SUNDAY, null, null, null, SundayActivity.PART_TIME, null, null, null, null);
                 default -> day(null, null, Map.of());
             };
             last = service.act(id, r);

@@ -28,4 +28,8 @@ public sealed interface Action {
     /** 대기 중인 이벤트의 선택 */
     record EventChoice(String eventId, int choiceIndex) implements Action {
     }
+
+    /** 멈춘 경기의 승부처 선택 */
+    record ClutchChoice(String momentId, int choiceIndex) implements Action {
+    }
 }

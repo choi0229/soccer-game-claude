@@ -219,7 +219,7 @@ public record Rules(
     public record CupStage(int teamsLeft, String name, double value) {
     }
 
-    public record EventRules(double sundayChance, int cooldownWeeks) {
+    public record EventRules(double sundayChance, int cooldownWeeks, double trainingChance) {
     }
 
     // ---- 특성과 인연 ----

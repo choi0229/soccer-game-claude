@@ -13,7 +13,7 @@ import java.util.UUID;
 public record GameView(UUID runId, long seed, int actionCount, String fingerprint, Phase phase, DateView date,
                        SchoolView school, ResourcesView resources, List<StatView> stats, SelectionsView selections,
                        List<SlotView> slots, MatchPreview matchToday, OptionsView options, List<StandingView> league, CupView cup,
-                       List<TraitView> traits, List<BondView> bonds,
+                       List<TraitView> traits, List<BondView> bonds, LiveMatchView liveMatch,
                        EventView pendingEvent, ActionOutcome lastOutcome, List<MatchRecord> matches,
                        SeasonSummary summary) {
 
@@ -79,7 +79,24 @@ public record GameView(UUID runId, long seed, int actionCount, String fingerprin
     }
 
     public record EventView(String eventId, String axis, String title, String body, String source,
-                            List<ChoiceView> choices) {
+                            String sourceLabel, List<ChoiceView> choices) {
+    }
+
+    /** 승부처에서 멈춘 경기: 지금까지의 중계와 승부처 (승부처 이후 정보는 담지 않는다) */
+    public record LiveMatchView(String competition, String roundLabel, String dateLabel, String opponentName,
+                                String opponentType, double opponentStrength, String opponentDefender, boolean home,
+                                String role, double selectionScore, List<com.soccergame.domain.match.TimelineEntry> timeline,
+                                ClutchView clutch) {
+    }
+
+    public record ClutchView(String momentId, String title, String situation, int minute,
+                             List<ClutchChoiceView> choices) {
+    }
+
+    /** style 은 AGGRESSIVE/BALANCED/SAFE, styleLabel 은 설정 파일의 표시 이름. trait 는 특성 이름 */
+    public record ClutchChoiceView(int index, String text, String style, String styleLabel, List<String> stats,
+                                   double probability, List<String> modifiers, String reward, double failRating,
+                                   String trait) {
     }
 
     /** trait: 고르면 오르는 특성 이름 (없으면 null) */

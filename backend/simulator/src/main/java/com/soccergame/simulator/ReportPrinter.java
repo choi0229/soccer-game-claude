@@ -149,17 +149,37 @@ public final class ReportPrinter {
                     .mapToDouble(Double::doubleValue).toArray();
             return w.length == 0 ? "-" : f0(Distribution.of(w).p50()) + "주";
         });
+        line("");
+        section("7-1. 승부처");
+        header("항목", reports);
+        row("출전 경기당 승부처 발생 비율", reports, r -> pct(r.clutchMatches, r.appearances));
+        for (var style : com.soccergame.domain.config.ClutchMoments.Style.values()) {
+            String label = config.clutchMoments().styles().get(style);
+            row(label + " 선택 비율", reports, r -> pct(r.clutchStyle.getOrDefault(style.name(), new int[2])[0],
+                    r.clutchMatches));
+            row(label + " 성공률", reports, r -> {
+                int[] c = r.clutchStyle.getOrDefault(style.name(), new int[2]);
+                return c[0] == 0 ? "-" : pct(c[1], c[0]);
+            });
+        }
+        row("평균 평점: 승부처 있는 경기", reports, r -> r.clutchMatches == 0 ? "-"
+                : f2(r.ratingWithClutch / r.clutchMatches));
+        row("평균 평점: 승부처 없는 경기", reports, r -> r.appearancesWithoutClutch == 0 ? "-"
+                : f2(r.ratingWithoutClutch / r.appearancesWithoutClutch));
+        line("");
+        header("항목", reports);
         row("메뉴 훈련 평균 적용 보너스", reports, r -> r.menuTrainings == 0 ? "-"
                 : String.format(Locale.ROOT, "+%.1f%%", 100 * r.bonusApplied / r.menuTrainings));
         row("상한에 걸린 훈련 비율", reports, r -> r.menuTrainings == 0 ? "-"
                 : String.format(Locale.ROOT, "%.1f%%", 100.0 * r.bonusCapped / r.menuTrainings));
         line("");
-        line("이벤트별 판당 평균 발생 횟수");
+        line("이벤트별 판당 평균 발생 횟수 (괄호: 한 판 최대)");
         line("");
         header("이벤트", reports);
         for (var e : config.events().events()) {
             row(e.id() + " " + e.title() + (e.once() ? " (1회)" : ""), reports,
-                    r -> f2((double) r.eventCounts.getOrDefault(e.id(), 0) / r.runs));
+                    r -> f2((double) r.eventCounts.getOrDefault(e.id(), 0) / r.runs) + " ("
+                            + r.eventMax.getOrDefault(e.id(), 0) + ")");
         }
         line("");
         return out.toString();

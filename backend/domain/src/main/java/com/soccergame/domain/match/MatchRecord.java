@@ -14,9 +14,10 @@ public record MatchRecord(Competition competition, String roundLabel, int week, 
                           int opponentId, String opponentName, double opponentStrength, String opponentDefender,
                           boolean home, MatchRole role, double selectionScore,
                           int teamGoals, int opponentGoals, int playerGoals, int playerAssists, int pressGoals,
+                          int clutchTeamGoals,
                           int ourScore, int theirScore, Boolean penaltyWin, String result,
                           Double rating, double reputationGained, String passiveGrowth, Double passiveGrowthAmount,
-                          List<SceneLog> scenes, List<TimelineEntry> timeline) {
+                          List<SceneLog> scenes, List<TimelineEntry> timeline, ClutchLog clutch) {
 
     public boolean won() {
         return "W".equals(result);

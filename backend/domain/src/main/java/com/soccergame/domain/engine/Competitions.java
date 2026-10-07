@@ -8,110 +8,98 @@ import com.soccergame.domain.config.GameConfig;
 import com.soccergame.domain.config.Rules;
 import com.soccergame.domain.match.MatchEngine;
 import com.soccergame.domain.match.MatchRecord;
+import com.soccergame.domain.match.MatchSession;
 import com.soccergame.domain.model.Axis;
 import com.soccergame.domain.model.Competition;
 import com.soccergame.domain.model.MatchRole;
 import com.soccergame.domain.model.School;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-/** 리그 라운드와 토너먼트 라운드를 진행하고, 플레이어 경기 결과를 상태에 적용한다. */
+/**
+ * 리그 라운드와 토너먼트 라운드를 진행하고, 플레이어 경기 결과를 상태에 적용한다.
+ * 한 라운드는 다른 학교 경기를 먼저 계산하고 플레이어 경기를 마지막에 계산한다.
+ * 플레이어 경기가 승부처에서 멈추면 라운드 기록은 경기가 끝날 때(complete) 한다.
+ */
 final class Competitions {
     private final GameConfig config;
     private final Rules rules;
-    private final GameCalendar calendar;
     private final Resources resources;
     private final MatchEngine engine;
 
     Competitions(GameConfig config, GameCalendar calendar, Resources resources, MatchEngine engine) {
         this.config = config;
         this.rules = config.rules();
-        this.calendar = calendar;
         this.resources = resources;
         this.engine = engine;
     }
 
-    /** 권역 리그 1라운드(플레이어 학교 경기 포함)를 치르고 플레이어 경기 기록을 돌려준다. */
-    MatchRecord playLeagueRound(GameState s, int round, String dateLabel) {
-        List<FixtureResult> results = new ArrayList<>();
-        MatchRecord record = null;
-        for (League.Fixture f : s.league.fixtures(round)) {
-            if (f.homeId() == s.playerSchoolId || f.awayId() == s.playerSchoolId) {
-                boolean home = f.homeId() == s.playerSchoolId;
-                int opponent = home ? f.awayId() : f.homeId();
-                record = playPlayerMatch(s, Competition.LEAGUE, round + "라운드", opponent, home, false, dateLabel);
-                results.add(home
-                        ? new FixtureResult(f.homeId(), f.awayId(), record.ourScore(), record.theirScore(), null)
-                        : new FixtureResult(f.homeId(), f.awayId(), record.theirScore(), record.ourScore(), null));
-            } else {
-                results.add(simulate(s, f, false));
-            }
+    /** 라운드 진행 결과. pending 이 있으면 승부처 선택을 기다린다. */
+    record RoundOutcome(MatchRecord record, PendingMatch pending) {
+        boolean paused() {
+            return pending != null;
         }
-        s.league.record(results, rules.match().points());
-        return record;
     }
 
-    /**
-     * 토너먼트 1라운드를 치른다. 플레이어 학교가 탈락한 뒤에도 나머지 대진은 계속 진행한다.
-     * 플레이어 학교 경기가 없으면 null.
-     */
-    MatchRecord playCupRound(GameState s, int roundIndex, String dateLabel) {
+    RoundOutcome playLeagueRound(GameState s, int round, String dateLabel) {
+        return playRound(s, Competition.LEAGUE, round, round + "라운드", s.league.fixtures(round), false, dateLabel);
+    }
+
+    /** 토너먼트 1라운드. 플레이어 학교가 탈락한 뒤에도 나머지 대진은 계속 진행한다. */
+    RoundOutcome playCupRound(GameState s, int roundIndex, String dateLabel) {
         if (s.cup.roundsPlayed() != roundIndex) {
             throw new IllegalStateException("토너먼트 라운드 순서가 어긋났습니다: " + roundIndex);
         }
         List<League.Fixture> pairs = s.cup.currentPairs();
-        String roundName = Cup.roundName(pairs.size() * 2);
-        List<FixtureResult> results = new ArrayList<>();
-        MatchRecord record = null;
-        for (League.Fixture f : pairs) {
+        return playRound(s, Competition.CUP, roundIndex, Cup.roundName(pairs.size() * 2), pairs, true, dateLabel);
+    }
+
+    private RoundOutcome playRound(GameState s, Competition competition, int round, String roundLabel,
+                                   List<League.Fixture> fixtures, boolean knockout, String dateLabel) {
+        FixtureResult[] results = new FixtureResult[fixtures.size()];
+        int playerIndex = -1;
+        for (int i = 0; i < fixtures.size(); i++) {
+            League.Fixture f = fixtures.get(i);
             if (f.homeId() == s.playerSchoolId || f.awayId() == s.playerSchoolId) {
-                boolean home = f.homeId() == s.playerSchoolId;
-                int opponent = home ? f.awayId() : f.homeId();
-                record = playPlayerMatch(s, Competition.CUP, roundName, opponent, home, true, dateLabel);
-                Boolean pk = record.penaltyWin();
-                results.add(home
-                        ? new FixtureResult(f.homeId(), f.awayId(), record.ourScore(), record.theirScore(), pk)
-                        : new FixtureResult(f.homeId(), f.awayId(), record.theirScore(), record.ourScore(),
-                        pk == null ? null : !pk));
+                playerIndex = i;
             } else {
-                results.add(simulate(s, f, true));
+                results[i] = simulate(s, f, knockout);
             }
         }
-        s.cup.record(results);
-        if (record != null && s.cup.isAlive(s.playerSchoolId)) {
-            int left = s.cup.alive().size();
-            for (Rules.CupStage stage : rules.reputation().cupStages()) {
-                if (stage.teamsLeft() == left) {
-                    resources.reputation(s, stage.value() * rules.reputation().gradeMultiplier());
-                    s.cupStagesReached.add(stage.name());
-                }
-            }
+        if (playerIndex < 0) {
+            record(s, competition, results, false);
+            return new RoundOutcome(null, null);
         }
-        return record;
-    }
-
-    private FixtureResult simulate(GameState s, League.Fixture f, boolean knockout) {
-        int[] goals = engine.simulateTeams(s.rng, s.school(f.homeId()).strength(), s.school(f.awayId()).strength());
-        Boolean pk = null;
-        if (knockout && goals[0] == goals[1]) {
-            pk = s.rng.chance(rules.match().penaltyWinChance());
-        }
-        return new FixtureResult(f.homeId(), f.awayId(), goals[0], goals[1], pk);
-    }
-
-    private MatchRecord playPlayerMatch(GameState s, Competition competition, String roundLabel, int opponentId,
-                                        boolean home, boolean knockout, String dateLabel) {
+        League.Fixture f = fixtures.get(playerIndex);
+        boolean home = f.homeId() == s.playerSchoolId;
         School us = s.playerSchool();
-        School them = s.school(opponentId);
-        Rules.MatchRules mr = rules.match();
+        School them = s.school(home ? f.awayId() : f.homeId());
         double score = engine.selectionScore(s.affinity.get(Axis.COACH), s.stats);
         MatchRole role = engine.role(score, us.strength(), s.isInjured());
         var defender = config.defenderType(them.defenderType());
-        MatchEngine.Result r = engine.play(s.rng, new MatchEngine.Input(s.stats, role,
+        MatchSession session = engine.start(s.rng, new MatchEngine.Input(s.stats, role,
                 resources.conditionLevel(s).match(), us.strength(), them.strength(), defender.passive(),
-                defender.name(), knockout));
+                defender.name(), knockout, true));
+        PendingMatch pending = new PendingMatch(session, competition, round, roundLabel, them, home, defender, role,
+                Math.round(score * 10) / 10.0, dateLabel, fixtures, results, playerIndex);
+        if (session.awaitingChoice()) {
+            return new RoundOutcome(null, pending);
+        }
+        return new RoundOutcome(complete(s, pending), null);
+    }
 
+    /** 멈춘 경기의 승부처 선택을 판정하고 경기를 마무리한다. */
+    MatchRecord resolve(GameState s, PendingMatch pending, int choiceIndex) {
+        engine.resolveClutch(s.rng, pending.session, choiceIndex);
+        return complete(s, pending);
+    }
+
+    /** 끝난 플레이어 경기를 적용하고 라운드를 기록한다. */
+    private MatchRecord complete(GameState s, PendingMatch p) {
+        MatchEngine.Result r = p.session.result();
+        Rules.MatchRules mr = rules.match();
+        MatchRole role = p.role;
         Double rating = null;
         double reputation = 0;
         String growth = null;
@@ -134,20 +122,61 @@ final class Competitions {
             reputation = raw * rep.gradeMultiplier();
             resources.reputation(s, reputation);
             List<String> candidates = List.of(GameConfig.MOMENTUM, GameConfig.CLUTCH, GameConfig.MENTAL,
-                    defender.passive());
+                    p.defender.passive());
             growth = s.rng.pick(candidates);
             s.stats.add(growth, mr.passive().growthPerMatch());
+            if (r.clutch() != null) {
+                String trait = config.clutchMoments().moments().stream()
+                        .filter(m -> m.id().equals(r.clutch().momentId())).findFirst().orElseThrow()
+                        .choices().get(r.clutch().choiceIndex()).trait();
+                if (trait != null) {
+                    s.traitScores.merge(trait, 1, Integer::sum);
+                }
+            }
         }
         resources.stamina(s, mr.staminaCost().of(role));
 
-        String result = r.outcome();
-        MatchRecord record = new MatchRecord(competition, roundLabel, s.week, dateLabel, them.id(), them.name(),
-                them.strength(), defender.name(), home, role, Math.round(score * 10) / 10.0, r.teamGoals(),
-                r.opponentGoals(), r.playerGoals(), r.playerAssists(), r.pressGoals(), r.ourScore(), r.theirScore(),
-                r.penaltyWin(), result, rating, reputation, growth == null ? null : config.stat(growth).name(),
-                growth == null ? null : mr.passive().growthPerMatch(),
-                r.scenes(), r.timeline());
+        MatchRecord record = new MatchRecord(p.competition, p.roundLabel, s.week, p.dateLabel, p.opponent.id(),
+                p.opponent.name(), p.opponent.strength(), p.defender.name(), p.home, role, p.selectionScore,
+                r.teamGoals(), r.opponentGoals(), r.playerGoals(), r.playerAssists(), r.pressGoals(),
+                r.clutchTeamGoals(), r.ourScore(), r.theirScore(), r.penaltyWin(), r.outcome(), rating, reputation,
+                growth == null ? null : config.stat(growth).name(),
+                growth == null ? null : mr.passive().growthPerMatch(), r.scenes(), r.timeline(), r.clutch());
         s.matches.add(record);
+
+        League.Fixture f = p.fixtures.get(p.playerIndex);
+        Boolean pk = r.penaltyWin();
+        p.results[p.playerIndex] = p.home
+                ? new FixtureResult(f.homeId(), f.awayId(), r.ourScore(), r.theirScore(), pk)
+                : new FixtureResult(f.homeId(), f.awayId(), r.theirScore(), r.ourScore(), pk == null ? null : !pk);
+        record(s, p.competition, p.results, true);
         return record;
+    }
+
+    private void record(GameState s, Competition competition, FixtureResult[] results, boolean playerPlayed) {
+        List<FixtureResult> list = Arrays.asList(results);
+        if (competition == Competition.LEAGUE) {
+            s.league.record(list, rules.match().points());
+            return;
+        }
+        s.cup.record(list);
+        if (playerPlayed && s.cup.isAlive(s.playerSchoolId)) {
+            int left = s.cup.alive().size();
+            for (Rules.CupStage stage : rules.reputation().cupStages()) {
+                if (stage.teamsLeft() == left) {
+                    resources.reputation(s, stage.value() * rules.reputation().gradeMultiplier());
+                    s.cupStagesReached.add(stage.name());
+                }
+            }
+        }
+    }
+
+    private FixtureResult simulate(GameState s, League.Fixture f, boolean knockout) {
+        int[] goals = engine.simulateTeams(s.rng, s.school(f.homeId()).strength(), s.school(f.awayId()).strength());
+        Boolean pk = null;
+        if (knockout && goals[0] == goals[1]) {
+            pk = s.rng.chance(rules.match().penaltyWinChance());
+        }
+        return new FixtureResult(f.homeId(), f.awayId(), goals[0], goals[1], pk);
     }
 }

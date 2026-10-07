@@ -1,6 +1,6 @@
 // 서버 GameView 와 같은 모양. 값은 모두 서버가 계산한 것이다.
 
-export type Phase = 'EVENT' | 'WEEKDAY' | 'SATURDAY' | 'SUNDAY' | 'FINISHED';
+export type Phase = 'MATCH' | 'EVENT' | 'WEEKDAY' | 'SATURDAY' | 'SUNDAY' | 'FINISHED';
 export type MatchRole = 'starter' | 'sub' | 'bench' | 'absent';
 export type TrainingSlot = 'MORNING' | 'AFTERNOON' | 'NIGHT';
 
@@ -11,19 +11,42 @@ export interface SceneLog {
   success: boolean; result: string; text: string; modifiers: string[];
 }
 
-export interface TimelineEntry { minute: number; kind: string; text: string; ourScore: number; theirScore: number }
+export interface TimelineEntry {
+  minute: number; kind: string; text: string; ourScore: number; theirScore: number;
+  probability: number | null; modifiers: string[] | null;
+}
+
+export interface ClutchLog {
+  momentId: string; title: string; situation: string; minute: number; choiceIndex: number; choiceText: string;
+  style: string; probability: number; success: boolean; result: string;
+}
 
 export interface MatchRecord {
   competition: 'LEAGUE' | 'CUP'; roundLabel: string; week: number; dateLabel: string;
   opponentId: number; opponentName: string; opponentStrength: number; opponentDefender: string;
   home: boolean; role: MatchRole; selectionScore: number;
   teamGoals: number; opponentGoals: number; playerGoals: number; playerAssists: number; pressGoals: number;
+  clutchTeamGoals: number;
   ourScore: number; theirScore: number; penaltyWin: boolean | null; result: 'W' | 'D' | 'L';
   rating: number | null; reputationGained: number; passiveGrowth: string | null; passiveGrowthAmount: number | null;
-  scenes: SceneLog[]; timeline: TimelineEntry[];
+  scenes: SceneLog[]; timeline: TimelineEntry[]; clutch: ClutchLog | null;
 }
 
-export interface ActionOutcome { dateLabel: string; log: LogEntry[]; match: MatchRecord | null; newEvents: string[] }
+export interface ActionOutcome {
+  dateLabel: string; log: LogEntry[]; match: MatchRecord | null; newEvents: string[]; partial: boolean;
+}
+
+export interface ClutchChoiceView {
+  index: number; text: string; style: string; styleLabel: string; stats: string[]; probability: number;
+  modifiers: string[]; reward: string; failRating: number; trait: string | null;
+}
+
+export interface LiveMatchView {
+  competition: string; roundLabel: string; dateLabel: string; opponentName: string; opponentType: string;
+  opponentStrength: number; opponentDefender: string; home: boolean; role: string; selectionScore: number;
+  timeline: TimelineEntry[];
+  clutch: { momentId: string; title: string; situation: string; minute: number; choices: ClutchChoiceView[] };
+}
 
 export interface Option { key: string; name: string; description: string | null }
 export interface MenuOption { id: string; name: string; stats: string[]; growthMultiplier: number }
@@ -80,8 +103,9 @@ export interface GameView {
   cup: { name: string; playerAlive: boolean; roundsPlayed: number; stagesReached: string[] };
   traits: TraitView[];
   bonds: BondView[];
+  liveMatch: LiveMatchView | null;
   pendingEvent: {
-    eventId: string; axis: string; title: string; body: string | null; source: string;
+    eventId: string; axis: string; title: string; body: string | null; source: string; sourceLabel: string;
     choices: { text: string; trait: string | null }[];
   } | null;
   lastOutcome: ActionOutcome | null;
@@ -104,4 +128,5 @@ export interface Meta { position: string; archetype: string; weeksPerYear: numbe
 export type ActionRequest =
   | { type: 'DAY'; dawn?: string; classAttitude?: string; menus?: Partial<Record<TrainingSlot, string>> }
   | { type: 'SUNDAY'; activity: string; meetTarget?: string }
-  | { type: 'EVENT_CHOICE'; eventId: string; choiceIndex: number };
+  | { type: 'EVENT_CHOICE'; eventId: string; choiceIndex: number }
+  | { type: 'CLUTCH_CHOICE'; momentId: string; choiceIndex: number };

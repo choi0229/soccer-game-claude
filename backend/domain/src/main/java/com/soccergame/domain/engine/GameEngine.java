@@ -26,12 +26,13 @@ public final class GameEngine {
     private final GameSetup setup;
     private final DayProcessor days;
     private final Modifiers modifiers;
+    private final MatchEngine matchEngine;
 
     public GameEngine(GameConfig config) {
         this.config = config;
         this.calendar = new GameCalendar(config.rules().calendar());
         this.resources = new Resources(config);
-        MatchEngine matchEngine = new MatchEngine(config);
+        this.matchEngine = new MatchEngine(config);
         EventEngine events = new EventEngine(config, calendar);
         Competitions competitions = new Competitions(config, calendar, resources, matchEngine);
         this.setup = new GameSetup(config, calendar, resources);
@@ -56,11 +57,24 @@ public final class GameEngine {
         return modifiers;
     }
 
+    /** 멈춘 경기의 승부처 선택지와 성공 확률 (없으면 빈 목록) */
+    public List<com.soccergame.domain.match.ClutchOption> clutchOptions(GameState s) {
+        return s.pendingMatch == null ? List.of() : matchEngine.clutchOptions(s.pendingMatch.session);
+    }
+
+    /** 멈춘 경기의 지금까지 중계 (승부처 이후 정보 없음) */
+    public List<com.soccergame.domain.match.TimelineEntry> liveTimeline(GameState s) {
+        return s.pendingMatch == null ? List.of() : matchEngine.partialTimeline(s.pendingMatch.session);
+    }
+
     public GameState newGame(long seed) {
         return setup.create(seed);
     }
 
     public Phase phase(GameState s) {
+        if (s.pendingMatch != null) {
+            return Phase.MATCH;
+        }
         if (!s.pendingEvents.isEmpty()) {
             return Phase.EVENT;
         }
@@ -119,6 +133,19 @@ public final class GameEngine {
                 }
                 yield days.sunday(s, sunday.activity(), sunday.meetTarget());
             }
+            case Action.ClutchChoice clutch -> {
+                if (phase != Phase.MATCH) {
+                    throw new InvalidActionException("선택을 기다리는 승부처가 없습니다");
+                }
+                var moment = s.pendingMatch.session.moment();
+                if (!moment.id().equals(clutch.momentId())) {
+                    throw new InvalidActionException("지금 선택할 승부처는 " + moment.id() + " 입니다");
+                }
+                if (clutch.choiceIndex() < 0 || clutch.choiceIndex() >= moment.choices().size()) {
+                    throw new InvalidActionException("없는 선택지입니다: " + clutch.choiceIndex());
+                }
+                yield days.resumeMatch(s, clutch.choiceIndex());
+            }
             case Action.EventChoice choice -> {
                 if (phase != Phase.EVENT) {
                     throw new InvalidActionException("선택을 기다리는 이벤트가 없습니다");
@@ -130,7 +157,8 @@ public final class GameEngine {
         if (!notes.isEmpty()) {
             List<LogEntry> log = new ArrayList<>(outcome.log());
             notes.forEach(n -> log.add(new LogEntry("알림", n)));
-            outcome = new ActionOutcome(outcome.dateLabel(), log, outcome.match(), outcome.newEvents());
+            outcome = new ActionOutcome(outcome.dateLabel(), log, outcome.match(), outcome.newEvents(),
+                    outcome.partial());
         }
         s.actionCount++;
         s.lastOutcome = outcome;

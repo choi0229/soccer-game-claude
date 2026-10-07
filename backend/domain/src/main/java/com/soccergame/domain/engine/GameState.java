@@ -66,6 +66,8 @@ public final class GameState {
     /** 이벤트 id → 마지막으로 발생한 주 */
     public final Map<String, Integer> eventLastWeek = new LinkedHashMap<>();
     public final Deque<PendingEvent> pendingEvents = new ArrayDeque<>();
+    /** 승부처 선택을 기다리며 멈춘 경기 (없으면 null) */
+    public PendingMatch pendingMatch;
     public final List<String> eventHistory = new ArrayList<>();
 
     /** 나머지 공부 주 → 그 직전 주를 마칠 때의 학업 성취 (이유 표시용) */

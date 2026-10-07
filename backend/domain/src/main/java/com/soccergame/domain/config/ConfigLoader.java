@@ -10,13 +10,14 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** 설정 디렉터리에서 YAML 다섯 개를 읽어 GameConfig 를 만든다. */
+/** 설정 디렉터리에서 YAML 여섯 개를 읽어 GameConfig 를 만든다. */
 public final class ConfigLoader {
     public static final String GAME = "game.yaml";
     public static final String TRAINING_MENUS = "training-menus.yaml";
     public static final String SCENES = "scenes.yaml";
     public static final String SCHOOLS = "schools.yaml";
     public static final String EVENTS = "events.yaml";
+    public static final String CLUTCH_MOMENTS = "clutch-moments.yaml";
 
     private static final ObjectMapper MAPPER = YAMLMapper.builder()
             .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
@@ -31,7 +32,8 @@ public final class ConfigLoader {
                 read(dir.resolve(TRAINING_MENUS), TrainingMenus.class),
                 read(dir.resolve(SCENES), Scenes.class),
                 read(dir.resolve(SCHOOLS), Schools.class),
-                read(dir.resolve(EVENTS), Events.class));
+                read(dir.resolve(EVENTS), Events.class),
+                read(dir.resolve(CLUTCH_MOMENTS), ClutchMoments.class));
     }
 
     private static <T> T read(Path file, Class<T> type) {

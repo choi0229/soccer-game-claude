@@ -1,0 +1,143 @@
+# 경기 중 선택: 승부처
+# 선발·교체로 출전한 경기에서 chance 확률로 한 번 나오며, 그 경기 기본 장면 중 마지막 장면을 대체한다.
+# 승부처 시점(마지막 장면의 분)의 전반/후반과 스코어 상황에 맞는 승부처 중 하나를 균등하게 뽑는다.
+#
+# condition: half FIRST(40분 이하) / SECOND, score LEADING / TIED / TRAILING
+# choices:
+#   style: AGGRESSIVE(위험 큼, 기준값 낮음, 보상 큼) / BALANCED / SAFE(기준값 높음, 보상 작음)
+#   stats: 판정 능력치 1~2개 (2개면 평균), base: 기준값
+#   성공 확률(%) = base + (능력치 - 상대 전력) × 0.8 + 컨디션 + 패시브 보정, 5~95 (기존 장면 판정식과 같음)
+#   success.outcome: GOAL(골) / ASSIST(도움, 팀 득점 +1) / EXTRA_SHOT(extraScene 슈팅 장면 1개 추가)
+#                    / TEAM_GOAL_CHANCE(teamGoalChance 확률로 팀 득점 +1)
+#   failRating: 실패했을 때 평점 변화 (기존 장면 실패 감점 대신)
+#   trait: 고르면 점수가 1 오르는 특성 (선택)
+
+chance:
+  starter: 0.6
+  sub: 0.3
+
+styles:
+  AGGRESSIVE: 과감하게
+  BALANCED: 침착하게
+  SAFE: 안전하게
+
+moments:
+  # ---------------- 전반 · 동점 ----------------
+  - id: clutch_01
+    title: 0의 균형을 깰 기회
+    situation: 하프라인을 넘어 공을 받았다. 앞에는 수비수 둘, 오른쪽으로 동료가 뛰어 들어간다.
+    condition: { half: FIRST, score: TIED }
+    choices:
+      - { text: 그대로 수비 사이를 파고들어 슈팅한다, style: AGGRESSIVE, stats: [dribbling, finishing], base: 18,
+          success: { outcome: GOAL }, failRating: -0.4, trait: competitor }
+      - { text: 동료와 원투 패스로 수비 뒤를 노린다, style: BALANCED, stats: [passing, offTheBall], base: 38,
+          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.2, trait: teamPlayer }
+      - { text: 측면 동료에게 안전하게 내준다, style: SAFE, stats: [passing], base: 62,
+          success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.15 }, failRating: -0.1, trait: modelStudent }
+
+  - id: clutch_02
+    title: 코너킥 공중볼 경합
+    situation: 코너킥이 니어포스트로 날아온다. 상대 수비수와 어깨를 맞대고 있다.
+    condition: { half: FIRST, score: TIED }
+    choices:
+      - { text: 몸을 던져 다이빙 헤더를 시도한다, style: AGGRESSIVE, stats: [heading], base: 18,
+          success: { outcome: GOAL }, failRating: -0.4, trait: competitor }
+      - { text: 머리로 뒤쪽 동료에게 떨궈 준다, style: BALANCED, stats: [heading, teamwork], base: 40,
+          success: { outcome: ASSIST }, failRating: -0.2, trait: teamPlayer }
+      - { text: 세컨드 볼에 대비해 자리를 지킨다, style: SAFE, stats: [workRate], base: 65,
+          success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.15 }, failRating: -0.1, trait: hardWorker }
+
+  # ---------------- 전반 · 앞서는 중 ----------------
+  - id: clutch_03
+    title: 추가골 역습
+    situation: 앞선 채로 맞은 역습, 2대1 상황이다. 골키퍼가 앞으로 나온다.
+    condition: { half: FIRST, score: LEADING }
+    choices:
+      - { text: 직접 골키퍼 키를 넘기는 슈팅을 한다, style: AGGRESSIVE, stats: [finishing, composure], base: 20,
+          success: { outcome: GOAL }, failRating: -0.4, trait: competitor }
+      - { text: 템포를 늦추고 공을 지킨다, style: SAFE, stats: [firstTouch, teamwork], base: 65,
+          success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.1 }, failRating: -0.1, trait: modelStudent }
+
+  # ---------------- 전반 · 지는 중 ----------------
+  - id: clutch_04
+    title: 아크 정면 프리킥
+    situation: 끌려가던 전반, 아크 정면에서 프리킥을 얻었다. 벽 너머로 골문 구석이 보인다.
+    condition: { half: FIRST, score: TRAILING }
+    choices:
+      - { text: 직접 강하게 때린다, style: AGGRESSIVE, stats: [kickPower, shotPower], base: 16,
+          success: { outcome: GOAL }, failRating: -0.4, trait: competitor }
+      - { text: 짧게 내주고 박스 안으로 파고든다, style: BALANCED, stats: [passing, offTheBall], base: 38,
+          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.2, trait: hardWorker }
+      - { text: 문전으로 낮게 감아 올린다, style: SAFE, stats: [kickPower], base: 60,
+          success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.2 }, failRating: -0.1, trait: teamPlayer }
+
+  # ---------------- 후반 · 동점 ----------------
+  - id: clutch_05
+    title: 종료 직전 1대1
+    situation: 후반 막판 동점, 수비 뒷공간으로 빠져나와 골키퍼와 마주 섰다. 뒤에서 수비수가 따라붙는다.
+    condition: { half: SECOND, score: TIED }
+    choices:
+      - { text: 골키퍼 키를 넘기는 칩슛을 시도한다, style: AGGRESSIVE, stats: [composure, finishing], base: 18,
+          success: { outcome: GOAL }, failRating: -0.5, trait: competitor }
+      - { text: 반대편으로 쇄도하는 동료에게 컷백한다, style: BALANCED, stats: [passing, teamwork], base: 40,
+          success: { outcome: ASSIST }, failRating: -0.2, trait: teamPlayer }
+      - { text: 몸싸움으로 버텨 프리킥을 얻어 낸다, style: SAFE, stats: [dribbling], base: 60,
+          success: { outcome: EXTRA_SHOT, extraScene: SET_PIECE }, failRating: -0.1, trait: modelStudent }
+
+  - id: clutch_06
+    title: 길게 넘어온 공
+    situation: 동점 상황, 골키퍼의 롱킥이 페널티박스 앞으로 떨어진다.
+    condition: { half: SECOND, score: TIED }
+    choices:
+      - { text: 떨어지는 공을 그대로 발리로 때린다, style: AGGRESSIVE, stats: [shotPower, composure], base: 16,
+          success: { outcome: GOAL }, failRating: -0.4, trait: competitor }
+      - { text: 가슴으로 받아 놓고 다음 동작을 노린다, style: BALANCED, stats: [firstTouch], base: 40,
+          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.2, trait: hardWorker }
+      - { text: 머리로 2선 동료에게 떨궈 준다, style: SAFE, stats: [heading, teamwork], base: 62,
+          success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.2 }, failRating: -0.1, trait: teamPlayer }
+
+  # ---------------- 후반 · 지는 중 ----------------
+  - id: clutch_07
+    title: 마지막 중거리 기회
+    situation: 한 골 뒤진 후반, 아크 밖에서 공이 발 앞에 떨어졌다. 앞이 비어 있다.
+    condition: { half: SECOND, score: TRAILING }
+    choices:
+      - { text: 그대로 중거리 슈팅을 때린다, style: AGGRESSIVE, stats: [shotPower], base: 16,
+          success: { outcome: GOAL }, failRating: -0.4, trait: competitor }
+      - { text: 측면으로 벌려 크로스를 기다린다, style: BALANCED, stats: [workRate, offTheBall], base: 40,
+          success: { outcome: EXTRA_SHOT, extraScene: CROSS_HEADER }, failRating: -0.2, trait: hardWorker }
+
+  - id: clutch_08
+    title: 문전 혼전
+    situation: 지고 있는 후반, 페널티박스 안 혼전에서 공이 발 앞으로 흘렀다.
+    condition: { half: SECOND, score: TRAILING }
+    choices:
+      - { text: 돌아서며 터닝슛을 한다, style: AGGRESSIVE, stats: [finishing, composure], base: 18,
+          success: { outcome: GOAL }, failRating: -0.4, trait: competitor }
+      - { text: 더 좋은 위치의 동료에게 내준다, style: BALANCED, stats: [passing], base: 40,
+          success: { outcome: ASSIST }, failRating: -0.2, trait: teamPlayer }
+      - { text: 공을 지키며 파울을 얻어 낸다, style: SAFE, stats: [firstTouch, dribbling], base: 60,
+          success: { outcome: EXTRA_SHOT, extraScene: SET_PIECE }, failRating: -0.1, trait: hardWorker }
+
+  # ---------------- 후반 · 앞서는 중 ----------------
+  - id: clutch_09
+    title: 쐐기골 역습
+    situation: 앞선 후반, 상대가 라인을 끌어올린 틈에 공을 끊었다. 앞에는 넓은 공간이 있다.
+    condition: { half: SECOND, score: LEADING }
+    choices:
+      - { text: 혼자 끝까지 치고 들어간다, style: AGGRESSIVE, stats: [speed, finishing], base: 18,
+          success: { outcome: GOAL }, failRating: -0.4, trait: competitor }
+      - { text: 코너 쪽으로 몰고 가 시간을 쓴다, style: SAFE, stats: [dribbling, workRate], base: 65,
+          success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.1 }, failRating: -0.1, trait: modelStudent }
+
+  - id: clutch_10
+    title: 골키퍼를 향한 압박
+    situation: 앞선 후반, 상대 골키퍼가 짧은 패스로 빌드업을 시작하려 한다.
+    condition: { half: SECOND, score: LEADING }
+    choices:
+      - { text: 골키퍼에게 전력으로 달려든다, style: AGGRESSIVE, stats: [speed, workRate], base: 18,
+          success: { outcome: GOAL }, failRating: -0.4, trait: hardWorker }
+      - { text: 패스 길목을 막아 공을 끊는다, style: BALANCED, stats: [workRate, teamwork], base: 40,
+          success: { outcome: EXTRA_SHOT, extraScene: BOX_SHOT }, failRating: -0.2, trait: teamPlayer }
+      - { text: 무리하지 않고 수비 위치로 돌아간다, style: SAFE, stats: [teamwork], base: 65,
+          success: { outcome: TEAM_GOAL_CHANCE, teamGoalChance: 0.1 }, failRating: -0.1, trait: modelStudent }

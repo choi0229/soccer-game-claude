@@ -89,7 +89,7 @@ daily:
     FOCUS: { name: 수업 집중, academics: 1.5, scaleAcademicsByFriends: true, stamina: -2, friendAffinity: 0, friendEventChance: 0 }
     DOZE: { name: 졸기, academics: -0.5, scaleAcademicsByFriends: false, stamina: 8, friendAffinity: 0, friendEventChance: 0 }
     QUESTION: { name: 선생님께 질문, academics: 1.0, scaleAcademicsByFriends: false, stamina: 0, friendAffinity: 0, friendEventChance: 0 }
-    FRIENDS: { name: 친구와 어울리기, academics: 0, scaleAcademicsByFriends: false, stamina: 0, friendAffinity: 3, friendEventChance: 0.15 }
+    FRIENDS: { name: 친구와 어울리기, academics: 0, scaleAcademicsByFriends: false, stamina: 0, friendAffinity: 1, friendEventChance: 0.15 }
   # 수업 집중 학업 배율 = base + 학교 친구 관계도 / divisor
   friendMultiplier: { base: 1.0, divisor: 200 }
   nightRecovery: 8
@@ -141,11 +141,11 @@ relationships:
   start: { coach: 30, teammate: 30, family: 50, friend: 30 }
   # 처음에는 잠긴 축. 이벤트 효과(unlockAxis)로 열리며 그때 관계도가 unlockAffinity 가 된다.
   # 일요일에 그 축을 만나지 않은 주가 끝날 때마다 missedWeekChange 만큼 바뀐다.
-  girlfriend: { unlockAffinity: 30, missedWeekChange: -2 }
+  girlfriend: { unlockAffinity: 30, missedWeekChange: -1 }
 
 # 특성: 이벤트 선택지의 trait 를 고르면 점수 +1. 점수가 tiers 이상이면 1/2/3단계.
 traits:
-  tiers: [6, 14, 24]
+  tiers: [10, 25, 45]
   list:
     - key: hardWorker
       name: 노력파
@@ -243,4 +243,6 @@ reputation:
 
 events:
   sundayChance: 0.7
-  cooldownWeeks: 4
+  cooldownWeeks: 6
+  # 오후 팀 훈련·야간 개인 훈련을 실제로 마친 칸마다 훈련 이벤트가 나올 확률
+  trainingChance: 0.05

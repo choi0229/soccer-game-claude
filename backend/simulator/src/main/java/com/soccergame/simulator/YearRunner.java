@@ -24,6 +24,11 @@ public final class YearRunner {
                 case FINISHED -> {
                     return s;
                 }
+                case MATCH -> {
+                    var options = engine.clutchOptions(s);
+                    engine.apply(s, new Action.ClutchChoice(s.pendingMatch.session.moment().id(),
+                            strategy.clutchChoice(s, options, choice)));
+                }
                 case EVENT -> {
                     PendingEvent pending = s.pendingEvents.peekFirst();
                     EventDef def = engine.config().event(pending.eventId()).orElseThrow();

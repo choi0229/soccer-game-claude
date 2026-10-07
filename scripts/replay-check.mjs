@@ -16,6 +16,8 @@ async function call(path, body) {
 // 결정적인 선택 순서: 행동 순번으로만 정한다
 function choose(view, step) {
   switch (view.phase) {
+    case 'MATCH':
+      return { type: 'CLUTCH_CHOICE', momentId: view.liveMatch.clutch.momentId, choiceIndex: step % view.liveMatch.clutch.choices.length };
     case 'EVENT':
       return { type: 'EVENT_CHOICE', eventId: view.pendingEvent.eventId, choiceIndex: step % view.pendingEvent.choices.length };
     case 'SUNDAY':
